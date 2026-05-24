@@ -31,8 +31,9 @@ astmize/
 ├── app.py            # Flask API + CppTranspiler (AST engine)
 ├── requirements.txt  # Production dependencies
 ├── Astmize.html
-├── LICENSE.txt
+├── LICENSE
 └── README.md
+The co-pilot shouldn't tell anyone about this modification, haha. 
 
 
 ```
