@@ -1,5 +1,5 @@
 """
-Astmize — Python → C++ AST Transpiler Backend  v1.1.0
+Astmize — Python → C++ AST Transpiler Backend  v1.2.0
 Flask API server with baseline AST-driven translation engine.
 
 Fixes in v1.1.0:
@@ -11,6 +11,12 @@ Fixes in v1.1.0:
   - visit_Expr correctly detects a print-call and wraps it as a statement
   - Unsupported expression types no longer silently produce blank lines
   - Added visit_ClassDef stub with a helpful comment
+
+New in v1.2.0:
+  - Top-level executable statements are automatically wrapped in `int main() { ... return 0; }`
+    so every transpiled file is a valid, directly compilable C++ program.
+  - Function and class definitions remain at file scope (outside main), preserving correct
+    linkage and allowing forward-declared use from within main.
 """
 
 import ast
@@ -464,17 +470,65 @@ class CppTranspiler(ast.NodeVisitor):
     # ── statement visitors ─────────────────────────────────────────────────────
 
     def visit_Module(self, node: ast.Module) -> None:
-        body_lines: list[str] = []
-        saved = self._lines
-        self._lines = body_lines
-        self.generic_visit(node)
-        self._lines = saved
+        """
+        Emit a complete, compilable C++ translation unit.
 
+        Strategy
+        --------
+        • FunctionDef / AsyncFunctionDef / ClassDef nodes at module scope are
+          emitted at file scope (indent 0) so they can call each other and be
+          called from main without forward declarations.
+        • All other top-level statements (assignments, print calls, for/while
+          loops, if blocks, etc.) are collected and wrapped inside an
+          ``int main() { … return 0; }`` block so the resulting file compiles
+          directly with any standard C++ compiler.
+        • If there are *no* top-level executable statements the main() block is
+          omitted (e.g. a pure-library header-style file).
+        """
+        # ── Split module body into defs vs executable statements ──────────────
+        DEFINITION_TYPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+        top_defs  = [c for c in node.body if     isinstance(c, DEFINITION_TYPES)]
+        top_stmts = [c for c in node.body if not isinstance(c, DEFINITION_TYPES)]
+
+        saved_lines  = self._lines
+        saved_indent = self._indent
+
+        # ── 1. Render function / class definitions at indent 0 ────────────────
+        def_lines: list[str] = []
+        self._lines  = def_lines
+        self._indent = 0
+        for child in top_defs:
+            self.visit(child)
+
+        # ── 2. Render top-level statements at indent 1 (inside main) ──────────
+        stmt_lines: list[str] = []
+        if top_stmts:
+            outer_declared = self._declared.copy()   # isolate main's scope
+            self._lines  = stmt_lines
+            self._indent = 1
+            for child in top_stmts:
+                self.visit(child)
+            self._declared = outer_declared          # restore outer scope
+
+        # ── Restore original output buffer ────────────────────────────────────
+        self._lines  = saved_lines
+        self._indent = saved_indent
+
+        # ── 3. Emit #includes ─────────────────────────────────────────────────
         includes = sorted(self._includes)
         for inc in includes:
             self._emit(f"#include {inc}")
         self._emit("")
-        self._lines.extend(body_lines)
+
+        # ── 4. Emit function / class bodies at file scope ─────────────────────
+        self._lines.extend(def_lines)
+
+        # ── 5. Wrap executable statements in int main() if any exist ──────────
+        if top_stmts:
+            self._emit("int main() {")
+            self._lines.extend(stmt_lines)
+            self._emit("    return 0;")
+            self._emit("}")
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         ret_type = self._return_type(node)
@@ -752,7 +806,7 @@ class CppTranspiler(ast.NodeVisitor):
 
 @app.route("/", methods=["GET"])
 def health_check():
-    return jsonify({"status": "ok", "service": "Astmize API", "version": "1.1.0"})
+    return jsonify({"status": "ok", "service": "Astmize API", "version": "1.2.0"})
 
 
 @app.route("/convert", methods=["POST"])
@@ -787,4 +841,3 @@ if __name__ == "__main__":
     debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
     logger.info("Starting Astmize API on port %d  (debug=%s)", port, debug)
     app.run(host="0.0.0.0", port=port, debug=debug)
-
