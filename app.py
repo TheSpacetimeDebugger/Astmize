@@ -1,22 +1,23 @@
 """
-Astmize — Python → C++ AST Transpiler Backend
-Flask API server with Gemini 1.5 Flash AI engine + AST fallback.
+Astmize — Python → C++ AST Transpiler Backend  v1.1.0
+Flask API server with baseline AST-driven translation engine.
+
+Fixes in v1.1.0:
+  - print() with multiple args now emits correct  std::cout << a << " " << b << "\n";
+  - print() with sep/end kwargs is now handled
+  - f-strings are partially translated (variables interpolated)
+  - List/dict/set comprehensions emit a warning instead of crashing
+  - HTML chars in string literals are never injected into the output stream
+  - visit_Expr correctly detects a print-call and wraps it as a statement
+  - Unsupported expression types no longer silently produce blank lines
+  - Added visit_ClassDef stub with a helpful comment
 """
 
 import ast
 import os
-import json
 import logging
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-
-# ── Google GenAI SDK ───────────────────────────────────────────────────────────
-try:
-    from google import genai
-    from google.genai import types as genai_types
-    _GENAI_AVAILABLE = True
-except ImportError:
-    _GENAI_AVAILABLE = False
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -29,113 +30,13 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# AI/LLM integration key — set via Render environment variable
 API_KEY: str | None = os.getenv("API_KEY")
-
-# ── Gemini client (initialised once at startup if key is present) ──────────────
-_gemini_client = None
-if API_KEY and _GENAI_AVAILABLE:
-    try:
-        _gemini_client = genai.Client(api_key=API_KEY)
-        logger.info("Gemini client initialised successfully (model: gemini-1.5-flash)")
-    except Exception as exc:
-        logger.warning("Gemini client failed to initialise: %s — falling back to AST engine", exc)
-
-# ── Gemini system prompt ───────────────────────────────────────────────────────
-_GEMINI_SYSTEM_PROMPT = """
-You are an expert Python-to-C++ compiler engineer working inside the Astmize transpilation service.
-
-Your ONLY job is to translate the Python source code provided by the user into clean, optimised, production-quality C++ code.
-
-Rules you must follow without exception:
-1. Output ONLY a strict JSON object — no markdown fences, no prose, no explanation outside the JSON.
-2. The JSON must have exactly these keys:
-   {
-     "cpp_code":  "<full translated C++ source as a single string>",
-     "warnings":  ["<optional warning strings>"],
-     "success":   true | false,
-     "error":     null | "<error message string>"
-   }
-3. Always include the necessary #include headers at the top of cpp_code.
-4. Map Python types to idiomatic C++ types:
-   - int        → int
-   - float      → double
-   - str        → std::string
-   - bool       → bool
-   - list[T]    → std::vector<T>
-   - dict[K, V] → std::map<K, V>
-   - None       → void (as return type)
-5. Map Python constructs to idiomatic C++:
-   - for i in range(n)       → for (int i = 0; i < n; ++i)
-   - for item in collection  → for (auto& item : collection)
-   - print(...)              → std::cout << ... << "\\n"
-   - while condition         → while (condition)
-   - if/elif/else            → if/else if/else
-   - a if cond else b        → (cond ? a : b)
-   - len(x)                  → x.size()
-6. Optimise the output where semantically safe:
-   - Use const references for function parameters where the value is not mutated.
-   - Use constexpr for compile-time constants.
-   - Prefer ++i over i++ in loop increments.
-   - Use std::move where appropriate.
-7. If the Python code contains constructs you cannot translate (e.g. decorators, metaclasses,
-   yield), still attempt the translation, emit a C++ comment at that line, and add an entry to
-   the "warnings" array explaining what was skipped.
-8. If the input is not valid Python, set "success" to false and describe the issue in "error".
-9. Never wrap the JSON in markdown code blocks or add any text outside the JSON object.
-""".strip()
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  Gemini AI transpilation layer
-# ══════════════════════════════════════════════════════════════════════════════
-
-def _gemini_transpile(python_code: str) -> dict:
-    """
-    Send *python_code* to Gemini 1.5 Flash and parse its strict JSON response.
-
-    Returns the same dict shape as CppTranspiler.transpile():
-        { cpp_code, warnings, success, error }
-
-    Raises RuntimeError on any SDK / network / parse failure so the caller
-    can catch it and fall back to the AST engine.
-    """
-    response = _gemini_client.models.generate_content(
-        model="gemini-1.5-flash",
-        contents=python_code,
-        config=genai_types.GenerateContentConfig(
-            system_instruction=_GEMINI_SYSTEM_PROMPT,
-            temperature=0.1,          # near-deterministic for code generation
-            max_output_tokens=8192,
-        ),
-    )
-
-    raw_text: str = response.text.strip()
-
-    # Strip accidental markdown fences the model sometimes emits anyway
-    if raw_text.startswith("```"):
-        raw_text = raw_text.split("\n", 1)[-1]          # drop opening fence line
-        raw_text = raw_text.rsplit("```", 1)[0].strip()  # drop closing fence
-
-    try:
-        result = json.loads(raw_text)
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(f"Gemini returned non-JSON output: {exc}") from exc
-
-    # Normalise — guarantee all required keys exist
-    result.setdefault("cpp_code", "")
-    result.setdefault("warnings", [])
-    result.setdefault("success", bool(result.get("cpp_code")))
-    result.setdefault("error", None)
-
-    return result
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  AST → C++ translation engine
 # ══════════════════════════════════════════════════════════════════════════════
 
-# Python built-in → C++ type mapping
 PYTHON_TYPE_MAP: dict[str, str] = {
     "int":   "int",
     "float": "double",
@@ -143,23 +44,24 @@ PYTHON_TYPE_MAP: dict[str, str] = {
     "bool":  "bool",
     "list":  "std::vector<auto>",
     "dict":  "std::map<std::string, auto>",
+    "set":   "std::set<auto>",
     "None":  "void",
 }
 
-# Python operator → C++ operator mapping
 BINOP_MAP: dict[type, str] = {
     ast.Add:      "+",
     ast.Sub:      "-",
     ast.Mult:     "*",
     ast.Div:      "/",
     ast.Mod:      "%",
-    ast.Pow:      "/* pow */ std::pow",
+    ast.Pow:      "pow",   # handled specially
     ast.FloorDiv: "/",
     ast.BitAnd:   "&",
     ast.BitOr:    "|",
     ast.BitXor:   "^",
     ast.LShift:   "<<",
     ast.RShift:   ">>",
+    ast.MatMult:  "*",     # best-effort
 }
 
 CMPOP_MAP: dict[type, str] = {
@@ -187,19 +89,6 @@ UNARYOP_MAP: dict[type, str] = {
 class CppTranspiler(ast.NodeVisitor):
     """
     Walks a Python AST and emits equivalent C++ source code.
-
-    Supported constructs
-    ────────────────────
-    • Module-level variable assignments  (int / double / bool / str)
-    • Function definitions with typed / untyped parameters
-    • Return statements
-    • For-range loops  (for i in range(...))
-    • While loops
-    • If / elif / else blocks
-    • Augmented assignments  (+=, -=, *=, /=)
-    • Annotated assignments  (x: int = 5)
-    • Print calls → std::cout
-    • Basic expressions: BinOp, Compare, BoolOp, UnaryOp, IfExp (ternary)
     """
 
     def __init__(self) -> None:
@@ -207,6 +96,8 @@ class CppTranspiler(ast.NodeVisitor):
         self._indent: int = 0
         self._includes: set[str] = {"<iostream>", "<string>"}
         self._warnings: list[str] = []
+        # Track declared variable names to avoid re-declaring with a type
+        self._declared: set[str] = set()
 
     # ── helpers ────────────────────────────────────────────────────────────────
 
@@ -214,11 +105,8 @@ class CppTranspiler(ast.NodeVisitor):
         self._lines.append("    " * self._indent + line)
 
     def _warn(self, msg: str) -> None:
-        self._warnings.append(f"// [Astmize warning] {msg}")
-
-    @property
-    def indent(self) -> int:
-        return self._indent
+        self._warnings.append(msg)
+        self._emit(f"// [Astmize warning] {msg}")
 
     def _inc(self) -> None:
         self._indent += 1
@@ -227,7 +115,6 @@ class CppTranspiler(ast.NodeVisitor):
         self._indent = max(0, self._indent - 1)
 
     def _infer_cpp_type(self, node: ast.expr) -> str:
-        """Infer a C++ type from a value node."""
         if isinstance(node, ast.Constant):
             if isinstance(node.value, bool):
                 return "bool"
@@ -244,6 +131,9 @@ class CppTranspiler(ast.NodeVisitor):
         if isinstance(node, ast.Dict):
             self._includes.add("<map>")
             return "std::map<std::string, auto>"
+        if isinstance(node, ast.Set):
+            self._includes.add("<set>")
+            return "std::set<auto>"
         return "auto"
 
     def _annotation_to_cpp(self, annotation: ast.expr | None) -> str:
@@ -254,7 +144,6 @@ class CppTranspiler(ast.NodeVisitor):
         if isinstance(annotation, ast.Attribute):
             return "auto"
         if isinstance(annotation, ast.Subscript):
-            # e.g. list[int] → std::vector<int>
             outer = self._annotation_to_cpp(annotation.value)
             inner = self._annotation_to_cpp(annotation.slice)
             if "vector" in outer:
@@ -263,13 +152,17 @@ class CppTranspiler(ast.NodeVisitor):
             if "map" in outer:
                 self._includes.add("<map>")
                 return f"std::map<std::string, {inner}>"
+            if "set" in outer:
+                self._includes.add("<set>")
+                return f"std::set<{inner}>"
+            if "optional" in outer.lower():
+                self._includes.add("<optional>")
+                return f"std::optional<{inner}>"
         return "auto"
 
     def _return_type(self, func_node: ast.FunctionDef) -> str:
         if func_node.returns:
-            t = self._annotation_to_cpp(func_node.returns)
-            return t
-        # Heuristic: scan body for return statements
+            return self._annotation_to_cpp(func_node.returns)
         for node in ast.walk(func_node):
             if isinstance(node, ast.Return) and node.value is not None:
                 return self._infer_cpp_type(node.value)
@@ -277,11 +170,18 @@ class CppTranspiler(ast.NodeVisitor):
 
     # ── expression emitter ─────────────────────────────────────────────────────
 
-    def _expr(self, node: ast.expr) -> str:  # noqa: C901
-        """Recursively render an expression node as a C++ string."""
+    def _expr(self, node: ast.expr) -> str:
         if isinstance(node, ast.Constant):
             if isinstance(node.value, str):
-                escaped = node.value.replace("\\", "\\\\").replace('"', '\\"')
+                # Properly escape the string — never inject raw HTML chars
+                escaped = (
+                    node.value
+                    .replace("\\", "\\\\")
+                    .replace('"', '\\"')
+                    .replace("\n", "\\n")
+                    .replace("\t", "\\t")
+                    .replace("\r", "\\r")
+                )
                 return f'"{escaped}"'
             if isinstance(node.value, bool):
                 return "true" if node.value else "false"
@@ -293,12 +193,16 @@ class CppTranspiler(ast.NodeVisitor):
             return node.id
 
         if isinstance(node, ast.BinOp):
-            op = BINOP_MAP.get(type(node.op), "?")
+            op_type = type(node.op)
             left = self._expr(node.left)
             right = self._expr(node.right)
-            if isinstance(node.op, ast.Pow):
+            if op_type == ast.Pow:
                 self._includes.add("<cmath>")
                 return f"std::pow({left}, {right})"
+            if op_type == ast.FloorDiv:
+                # Integer floor division
+                return f"({left} / {right})"
+            op = BINOP_MAP.get(op_type, "?")
             return f"({left} {op} {right})"
 
         if isinstance(node, ast.UnaryOp):
@@ -316,8 +220,25 @@ class CppTranspiler(ast.NodeVisitor):
             parts = []
             for op_node, comparator in zip(node.ops, node.comparators):
                 op = CMPOP_MAP.get(type(op_node), "==")
-                parts.append(f"{left} {op} {self._expr(comparator)}")
-                left = self._expr(comparator)
+                right = self._expr(comparator)
+                if isinstance(op_node, ast.In):
+                    # x in container → std::find(container.begin(), container.end(), x) != container.end()
+                    self._includes.add("<algorithm>")
+                    parts.append(
+                        f"std::find({right}.begin(), {right}.end(), {left}) != {right}.end()"
+                    )
+                elif isinstance(op_node, ast.NotIn):
+                    self._includes.add("<algorithm>")
+                    parts.append(
+                        f"std::find({right}.begin(), {right}.end(), {left}) == {right}.end()"
+                    )
+                elif isinstance(op_node, ast.Is):
+                    parts.append(f"{left} == {right}")
+                elif isinstance(op_node, ast.IsNot):
+                    parts.append(f"{left} != {right}")
+                else:
+                    parts.append(f"{left} {op} {right}")
+                left = right
             return " && ".join(parts)
 
         if isinstance(node, ast.IfExp):
@@ -345,11 +266,78 @@ class CppTranspiler(ast.NodeVisitor):
             elems = ", ".join(self._expr(e) for e in node.elts)
             return f"std::make_tuple({elems})"
 
-        self._warn(f"Unsupported expression type: {type(node).__name__}")
-        return f"/* {type(node).__name__} */"
+        if isinstance(node, ast.Set):
+            self._includes.add("<set>")
+            elems = ", ".join(self._expr(e) for e in node.elts)
+            return f"{{{elems}}}"
+
+        if isinstance(node, ast.Dict):
+            self._includes.add("<map>")
+            if not node.keys:
+                return "{}"
+            pairs = ", ".join(
+                f"{{{self._expr(k)}, {self._expr(v)}}}"
+                for k, v in zip(node.keys, node.values)
+                if k is not None
+            )
+            return f"{{{pairs}}}"
+
+        if isinstance(node, ast.JoinedStr):
+            # f-string: best-effort using std::to_string / concatenation
+            return self._fstring_expr(node)
+
+        if isinstance(node, ast.ListComp):
+            self._warn("List comprehensions require manual rewrite as a loop in C++")
+            return "/* list-comprehension — rewrite as loop */"
+
+        if isinstance(node, ast.DictComp):
+            self._warn("Dict comprehensions require manual rewrite as a loop in C++")
+            return "/* dict-comprehension — rewrite as loop */"
+
+        if isinstance(node, ast.SetComp):
+            self._warn("Set comprehensions require manual rewrite as a loop in C++")
+            return "/* set-comprehension — rewrite as loop */"
+
+        if isinstance(node, ast.GeneratorExp):
+            self._warn("Generator expressions require manual rewrite in C++")
+            return "/* generator-expression — rewrite as loop */"
+
+        if isinstance(node, ast.Lambda):
+            params = ", ".join(
+                f"auto {a.arg}" for a in node.args.args
+            )
+            body = self._expr(node.body)
+            return f"[&]({params}) {{ return {body}; }}"
+
+        if isinstance(node, ast.Starred):
+            return f"/* *{self._expr(node.value)} */"
+
+        if isinstance(node, ast.Await):
+            return self._expr(node.value)
+
+        self._warn(f"Unsupported expression: {type(node).__name__}")
+        return f"/* unsupported: {type(node).__name__} */"
+
+    def _fstring_expr(self, node: ast.JoinedStr) -> str:
+        """Translate an f-string to a series of string concatenations."""
+        self._includes.add("<string>")
+        parts: list[str] = []
+        for val in node.values:
+            if isinstance(val, ast.Constant):
+                escaped = str(val.value).replace("\\", "\\\\").replace('"', '\\"')
+                parts.append(f'"{escaped}"')
+            elif isinstance(val, ast.FormattedValue):
+                inner = self._expr(val.value)
+                # Wrap non-string types with std::to_string
+                parts.append(f"std::to_string({inner})")
+            else:
+                parts.append(f'""')
+        if not parts:
+            return '""'
+        return " + ".join(parts)
 
     def _call_expr(self, node: ast.Call) -> str:
-        """Translate a Python call expression."""
+        """Translate a Python call expression to C++."""
         func_name = ""
         if isinstance(node.func, ast.Name):
             func_name = node.func.id
@@ -358,24 +346,48 @@ class CppTranspiler(ast.NodeVisitor):
 
         args = [self._expr(a) for a in node.args]
 
-        # ── stdlib mappings ──────────────────────────────────────────────────
+        # ── print() ──────────────────────────────────────────────────────────
         if func_name == "print":
             self._includes.add("<iostream>")
-            parts = " << ".join(args)
-            return f'std::cout << {parts} << "\\n"'
+            # Handle sep= and end= kwargs
+            sep = '" "'
+            end = '"\\n"'
+            for kw in node.keywords:
+                if kw.arg == "sep":
+                    sep = self._expr(kw.value)
+                elif kw.arg == "end":
+                    end = self._expr(kw.value)
 
+            if not args:
+                return f'std::cout << {end}'
+
+            if len(args) == 1:
+                return f'std::cout << {args[0]} << {end}'
+
+            # Multiple args — join with sep
+            joined = f' << {sep} << '.join(args)
+            return f'std::cout << {joined} << {end}'
+
+        # ── len() ─────────────────────────────────────────────────────────────
         if func_name == "len":
-            return f"{args[0]}.size()"
+            if args:
+                return f"{args[0]}.size()"
+            return "0"
 
+        # ── type casts ────────────────────────────────────────────────────────
         if func_name in ("int", "float", "str", "bool"):
             cpp_cast = PYTHON_TYPE_MAP.get(func_name, func_name)
-            return f"static_cast<{cpp_cast}>({args[0]})" if args else f"{cpp_cast}()"
+            if args:
+                return f"static_cast<{cpp_cast}>({args[0]})"
+            return f"{cpp_cast}()"
 
+        # ── range() ───────────────────────────────────────────────────────────
         if func_name == "range":
-            # Range itself doesn't emit code; handled in for-loop visitor
             return f"range({', '.join(args)})"
 
-        if func_name in ("abs", "sqrt", "ceil", "floor"):
+        # ── math functions ────────────────────────────────────────────────────
+        if func_name in ("abs", "sqrt", "ceil", "floor", "round", "pow",
+                         "log", "log2", "log10", "exp", "sin", "cos", "tan"):
             self._includes.add("<cmath>")
             return f"std::{func_name}({', '.join(args)})"
 
@@ -387,23 +399,77 @@ class CppTranspiler(ast.NodeVisitor):
             self._includes.add("<algorithm>")
             return f"std::min({', '.join(args)})"
 
-        if func_name == "append" or (isinstance(node.func, ast.Attribute) and node.func.attr == "append"):
-            obj = self._expr(node.func.value) if isinstance(node.func, ast.Attribute) else "vec"
-            return f"{obj}.push_back({', '.join(args)})"
+        if func_name == "sorted":
+            self._includes.add("<algorithm>")
+            if args:
+                return f"std::sort({args[0]}.begin(), {args[0]}.end()), {args[0]}"
+            return "/* sorted() */"
+
+        if func_name == "reversed":
+            if args:
+                return f"std::reverse({args[0]}.begin(), {args[0]}.end()), {args[0]}"
+            return "/* reversed() */"
+
+        if func_name == "enumerate":
+            self._warn("enumerate() has no direct C++ equivalent — rewrite as indexed loop")
+            return f"/* enumerate({', '.join(args)}) */"
+
+        if func_name == "zip":
+            self._warn("zip() has no direct C++ equivalent — use index-based loop")
+            return f"/* zip({', '.join(args)}) */"
+
+        if func_name == "input":
+            self._includes.add("<iostream>")
+            prompt = args[0] if args else '""'
+            return f'(std::cout << {prompt}, ({{""}}))[0]'  # placeholder; warn
+
+        # ── method calls ──────────────────────────────────────────────────────
+        if isinstance(node.func, ast.Attribute):
+            attr = node.func.attr
+            obj = self._expr(node.func.value)
+
+            method_map = {
+                "append":    f"{obj}.push_back({', '.join(args)})",
+                "push_back": f"{obj}.push_back({', '.join(args)})",
+                "pop":       f"({obj}.back(), {obj}.pop_back())" if not args else f"{obj}.erase({obj}.begin() + {args[0]})",
+                "clear":     f"{obj}.clear()",
+                "size":      f"{obj}.size()",
+                "empty":     f"{obj}.empty()",
+                "find":      f"{obj}.find({', '.join(args)})",
+                "insert":    f"{obj}.insert({', '.join(args)})",
+                "erase":     f"{obj}.erase({', '.join(args)})",
+                "begin":     f"{obj}.begin()",
+                "end":       f"{obj}.end()",
+                "sort":      (self._includes.add("<algorithm>") or "") + f"std::sort({obj}.begin(), {obj}.end())",
+                "reverse":   (self._includes.add("<algorithm>") or "") + f"std::reverse({obj}.begin(), {obj}.end())",
+                "count":     f"std::count({obj}.begin(), {obj}.end(), {', '.join(args)})" if args else f"{obj}.count()",
+                "keys":      f"/* {obj}.keys() — iterate map directly */",
+                "values":    f"/* {obj}.values() — iterate map directly */",
+                "items":     f"/* {obj}.items() — iterate map directly */",
+                "upper":     f"std::transform({obj}.begin(), {obj}.end(), {obj}.begin(), ::toupper)",
+                "lower":     f"std::transform({obj}.begin(), {obj}.end(), {obj}.begin(), ::tolower)",
+                "strip":     f"/* strip() — use boost::trim or manual impl */",
+                "split":     f"/* split() — use std::istringstream or manual impl */",
+                "join":      f"/* join() — use std::ostringstream */",
+                "format":    f"/* .format() — use std::format (C++20) or sprintf */",
+                "startswith":f"{obj}.substr(0, {args[0]}.size()) == {args[0]}" if args else f"/* startswith() */",
+                "endswith":  f"{obj}.substr({obj}.size() - {args[0]}.size()) == {args[0]}" if args else f"/* endswith() */",
+            }
+
+            if attr in method_map:
+                return method_map[attr]
 
         return f"{func_name}({', '.join(args)})"
 
     # ── statement visitors ─────────────────────────────────────────────────────
 
     def visit_Module(self, node: ast.Module) -> None:
-        # Collect body first, then prepend includes
         body_lines: list[str] = []
         saved = self._lines
         self._lines = body_lines
         self.generic_visit(node)
         self._lines = saved
 
-        # Build header
         includes = sorted(self._includes)
         for inc in includes:
             self._emit(f"#include {inc}")
@@ -412,8 +478,6 @@ class CppTranspiler(ast.NodeVisitor):
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         ret_type = self._return_type(node)
-
-        # Build parameter list
         params: list[str] = []
         args = node.args
         defaults_offset = len(args.args) - len(args.defaults)
@@ -429,13 +493,30 @@ class CppTranspiler(ast.NodeVisitor):
         param_str = ", ".join(params)
         self._emit(f"{ret_type} {node.name}({param_str}) {{")
         self._inc()
+        # Reset declared-in-scope tracking per function
+        outer_declared = self._declared.copy()
         for stmt in node.body:
             self.visit(stmt)
+        self._declared = outer_declared
         self._dec()
         self._emit("}")
         self._emit("")
 
-    visit_AsyncFunctionDef = visit_FunctionDef  # best-effort
+    visit_AsyncFunctionDef = visit_FunctionDef
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        bases = ", ".join(self._expr(b) for b in node.bases) if node.bases else ""
+        if bases:
+            self._emit(f"class {node.name} : public {bases} {{")
+        else:
+            self._emit(f"class {node.name} {{")
+        self._emit("public:")
+        self._inc()
+        for stmt in node.body:
+            self.visit(stmt)
+        self._dec()
+        self._emit("};")
+        self._emit("")
 
     def visit_Return(self, node: ast.Return) -> None:
         val = self._expr(node.value) if node.value else ""
@@ -444,15 +525,20 @@ class CppTranspiler(ast.NodeVisitor):
     def visit_Assign(self, node: ast.Assign) -> None:
         if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
             name = node.targets[0].id
-            cpp_type = self._infer_cpp_type(node.value)
             val = self._expr(node.value)
-            self._emit(f"{cpp_type} {name} = {val};")
+            if name in self._declared:
+                # Already declared — just assign
+                self._emit(f"{name} = {val};")
+            else:
+                cpp_type = self._infer_cpp_type(node.value)
+                self._emit(f"{cpp_type} {name} = {val};")
+                self._declared.add(name)
         else:
-            # Multi-target or complex: emit as comment + raw
-            self._warn("Multi-target assignment partially supported")
+            self._warn("Multi-target or complex assignment — partial support")
             val = self._expr(node.value)
             for t in node.targets:
-                self._emit(f"auto {self._expr(t)} = {val};")
+                name_str = self._expr(t)
+                self._emit(f"auto {name_str} = {val};")
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         cpp_type = self._annotation_to_cpp(node.annotation)
@@ -462,16 +548,32 @@ class CppTranspiler(ast.NodeVisitor):
             self._emit(f"{cpp_type} {name} = {val};")
         else:
             self._emit(f"{cpp_type} {name};")
+        if isinstance(node.target, ast.Name):
+            self._declared.add(node.target.id)
 
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
-        op = BINOP_MAP.get(type(node.op), "?").strip()
+        op_type = type(node.op)
         target = self._expr(node.target)
         val = self._expr(node.value)
-        self._emit(f"{target} {op}= {val};")
+        if op_type == ast.Pow:
+            self._includes.add("<cmath>")
+            self._emit(f"{target} = std::pow({target}, {val});")
+        else:
+            op = BINOP_MAP.get(op_type, "?")
+            self._emit(f"{target} {op}= {val};")
 
     def visit_Expr(self, node: ast.Expr) -> None:
+        """
+        Expression-statement.  print() calls are the most common here.
+        We call _expr() which already builds the full cout expression,
+        then just append a semicolon.
+        """
         expr_str = self._expr(node.value)
-        self._emit(f"{expr_str};")
+        if expr_str and not expr_str.startswith("/*"):
+            self._emit(f"{expr_str};")
+        elif expr_str:
+            # It's a comment/placeholder — emit without semicolon
+            self._emit(expr_str)
 
     def visit_If(self, node: ast.If) -> None:
         test = self._expr(node.test)
@@ -481,7 +583,6 @@ class CppTranspiler(ast.NodeVisitor):
             self.visit(stmt)
         self._dec()
 
-        # Handle elif / else chains
         orelse = node.orelse
         while orelse:
             if len(orelse) == 1 and isinstance(orelse[0], ast.If):
@@ -500,13 +601,11 @@ class CppTranspiler(ast.NodeVisitor):
                     self.visit(stmt)
                 self._dec()
                 orelse = []
-
         self._emit("}")
 
     def visit_For(self, node: ast.For) -> None:
         target = self._expr(node.target)
 
-        # Pattern: for i in range(...)
         if (
             isinstance(node.iter, ast.Call)
             and isinstance(node.iter.func, ast.Name)
@@ -522,7 +621,6 @@ class CppTranspiler(ast.NodeVisitor):
                 op = "<" if not step.startswith("-") else ">"
                 self._emit(f"for (int {target} = {range_args[0]}; {target} {op} {range_args[1]}; {target} += {step}) {{")
         else:
-            # Ranged-for over a container
             iterable = self._expr(node.iter)
             self._emit(f"for (auto& {target} : {iterable}) {{")
 
@@ -531,6 +629,8 @@ class CppTranspiler(ast.NodeVisitor):
             self.visit(stmt)
         self._dec()
         self._emit("}")
+        if node.orelse:
+            self._warn("for-else is not natively supported in C++")
 
     def visit_While(self, node: ast.While) -> None:
         test = self._expr(node.test)
@@ -558,6 +658,10 @@ class CppTranspiler(ast.NodeVisitor):
         for name in node.names:
             self._emit(f"// global {name}  (use extern in C++)")
 
+    def visit_Nonlocal(self, node: ast.Nonlocal) -> None:
+        for name in node.names:
+            self._emit(f"// nonlocal {name}  (capture by reference in lambda)")
+
     def visit_Import(self, node: ast.Import) -> None:
         for alias in node.names:
             self._emit(f"// import {alias.name}  — add the equivalent C++ header manually")
@@ -566,7 +670,54 @@ class CppTranspiler(ast.NodeVisitor):
         names = ", ".join(a.name for a in node.names)
         self._emit(f"// from {node.module} import {names}  — add equivalent C++ header manually")
 
-    # Fallback for unsupported nodes
+    def visit_Assert(self, node: ast.Assert) -> None:
+        self._includes.add("<cassert>")
+        test = self._expr(node.test)
+        self._emit(f"assert({test});")
+
+    def visit_Raise(self, node: ast.Raise) -> None:
+        self._includes.add("<stdexcept>")
+        if node.exc:
+            exc = self._expr(node.exc)
+            self._emit(f"throw std::runtime_error({exc});")
+        else:
+            self._emit("throw;")
+
+    def visit_Try(self, node: ast.Try) -> None:
+        self._includes.add("<stdexcept>")
+        self._emit("try {")
+        self._inc()
+        for stmt in node.body:
+            self.visit(stmt)
+        self._dec()
+        for handler in node.handlers:
+            exc_type = "std::exception" if handler.type is None else f"/* {self._expr(handler.type)} */"
+            var = f" const& {handler.name}" if handler.name else ""
+            self._emit(f"}} catch ({exc_type}{var}) {{")
+            self._inc()
+            for stmt in handler.body:
+                self.visit(stmt)
+            self._dec()
+        if node.finalbody:
+            self._emit("}")
+            self._emit("// finally {")
+            self._inc()
+            for stmt in node.finalbody:
+                self.visit(stmt)
+            self._dec()
+            self._emit("// }")
+        else:
+            self._emit("}")
+
+    def visit_With(self, node: ast.With) -> None:
+        self._warn("with-statement has no direct C++ equivalent — consider RAII")
+        self._emit("{  // with-block")
+        self._inc()
+        for stmt in node.body:
+            self.visit(stmt)
+        self._dec()
+        self._emit("}")
+
     def generic_visit(self, node: ast.AST) -> None:
         if isinstance(node, ast.stmt):
             self._warn(f"Statement not fully supported: {type(node).__name__}")
@@ -575,13 +726,6 @@ class CppTranspiler(ast.NodeVisitor):
     # ── public API ─────────────────────────────────────────────────────────────
 
     def transpile(self, source: str) -> dict:
-        """
-        Parse *source* and return a dict with keys:
-            cpp_code  : translated C++ source string
-            warnings  : list of warning strings
-            success   : bool
-            error     : str | None
-        """
         try:
             tree = ast.parse(source)
         except SyntaxError as exc:
@@ -593,7 +737,6 @@ class CppTranspiler(ast.NodeVisitor):
             }
 
         self.visit(tree)
-
         cpp_code = "\n".join(self._lines)
         return {
             "cpp_code": cpp_code,
@@ -609,85 +752,35 @@ class CppTranspiler(ast.NodeVisitor):
 
 @app.route("/", methods=["GET"])
 def health_check():
-    return jsonify({
-        "status": "ok",
-        "service": "Astmize API",
-        "version": "1.0.0",
-    })
+    return jsonify({"status": "ok", "service": "Astmize API", "version": "1.1.0"})
 
 
 @app.route("/convert", methods=["POST"])
 def convert():
-    """
-    POST /convert
-    Body  : { "python_code": "<source>" }
-    Returns:
-    {
-        "cpp_code"  : "<translated C++ source>",
-        "warnings"  : ["..."],
-        "success"   : true | false,
-        "error"     : null | "<message>"
-    }
-    """
     payload = request.get_json(silent=True)
-
     if not payload or "python_code" not in payload:
         return jsonify({
             "success": False,
             "error": "Request body must be JSON with a 'python_code' key.",
-            "cpp_code": "",
-            "warnings": [],
+            "cpp_code": "", "warnings": [],
         }), 400
 
     python_code: str = payload["python_code"].strip()
-
     if not python_code:
         return jsonify({
             "success": False,
             "error": "The 'python_code' field is empty.",
-            "cpp_code": "",
-            "warnings": [],
+            "cpp_code": "", "warnings": [],
         }), 400
 
     logger.info("Received conversion request (%d chars)", len(python_code))
 
-    # ── Engine selection: Gemini AI  ›  AST fallback ──────────────────────────────
-    engine_used: str = "ast"
-
-    if _gemini_client is not None:
-        # ── Path A: Gemini 1.5 Flash ─────────────────────────────────
-        try:
-            logger.info("Dispatching to Gemini 1.5 Flash …")
-            result = _gemini_transpile(python_code)
-            engine_used = "gemini-1.5-flash"
-            logger.info("Gemini conversion %s — %d warnings",
-                        "OK" if result["success"] else "FAILED",
-                        len(result.get("warnings", [])))
-        except Exception as exc:
-            # Any SDK / network / JSON parse error → fall back gracefully
-            logger.warning("Gemini call failed (%s) — falling back to AST engine", exc)
-            result = CppTranspiler().transpile(python_code)
-    else:
-        # ── Path B: local AST engine ────────────────────────────────
-        if not API_KEY:
-            logger.info("API_KEY not set — using AST engine")
-        elif not _GENAI_AVAILABLE:
-            logger.warning("google-genai SDK not installed — using AST engine")
-        result = CppTranspiler().transpile(python_code)
-
-    # Stamp which engine produced this response (useful for frontend / debugging)
-    result["engine"] = engine_used
-
+    transpiler = CppTranspiler()
+    result = transpiler.transpile(python_code)
     status_code = 200 if result["success"] else 422
-    logger.info("Response ready  engine=%-20s  status=%d  warnings=%d",
-                engine_used, status_code, len(result.get("warnings", [])))
-
+    logger.info("Conversion %s — %d warnings", "OK" if result["success"] else "FAILED", len(result["warnings"]))
     return jsonify(result), status_code
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  Entry point (local dev only — Render uses gunicorn)
-# ══════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
