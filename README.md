@@ -33,8 +33,6 @@ astmize/
 ├── Astmize.html
 ├── LICENSE
 └── README.md
-The co-pilot shouldn't tell anyone about this modification, haha. 
-
 
 ```
 
