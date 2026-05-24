@@ -180,6 +180,15 @@ class CppTranspiler(ast.NodeVisitor):
         if annotation is None:
             return "auto"
 
+        # ── None literal  (e.g. `-> None` is stored as ast.Constant(None)) ───
+        if isinstance(annotation, ast.Constant):
+            if annotation.value is None:
+                return "void"
+            if isinstance(annotation.value, str):
+                # Forward-reference string annotation e.g. -> "MyClass"
+                return annotation.value
+            return "auto"
+
         # ── bare name annotation ───────────────────────────────────────────────
         if isinstance(annotation, ast.Name):
             cpp_type = PYTHON_TYPE_MAP.get(annotation.id, annotation.id)
@@ -738,21 +747,106 @@ class CppTranspiler(ast.NodeVisitor):
         self._emit(f"return {val};")
 
     def visit_Assign(self, node: ast.Assign) -> None:
-        if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
-            name = node.targets[0].id
-            val = self._expr(node.value)
-            if name in self._declared:
-                self._emit(f"{name} = {val};")
+        """
+        Handle all Python assignment forms:
+
+          1. Simple name          x = expr
+          2. Subscript target     arr[i] = expr
+          3. Attribute target     self.x = expr
+          4. Tuple unpacking      a, b = b, a   /   arr[i], arr[j] = arr[j], arr[i]
+          5. Chained targets      x = y = expr
+          6. Fallback             anything else → comment
+
+        FIX v1.3.0b: The old else-branch prepended `auto` to every target string
+        which turned `arr[j] = ...` into `auto arr[j] = ...` — an illegal VLA.
+        Each target kind is now routed to its own correct emission.
+        """
+        # ── Helpers used only inside this method ──────────────────────────────
+        def _assign_single(target: ast.expr, val_expr: str) -> None:
+            """Emit one assignment; pick up or introduce variable as needed."""
+            if isinstance(target, ast.Name):
+                name = target.id
+                if name in self._declared:
+                    self._emit(f"{name} = {val_expr};")
+                else:
+                    cpp_type = self._infer_cpp_type(node.value)
+                    self._emit(f"{cpp_type} {name} = {val_expr};")
+                    self._declared.add(name)
+
+            elif isinstance(target, (ast.Subscript, ast.Attribute)):
+                # No type prefix — just assignment into an existing location.
+                self._emit(f"{self._expr(target)} = {val_expr};")
+
             else:
-                cpp_type = self._infer_cpp_type(node.value)
-                self._emit(f"{cpp_type} {name} = {val};")
-                self._declared.add(name)
-        else:
-            self._warn("Multi-target or complex assignment — partial support")
-            val = self._expr(node.value)
+                self._warn(f"Unsupported assignment target: {type(target).__name__}")
+                self._emit(f"/* {self._expr(target)} = {val_expr}; */")
+
+        # ── Case: tuple unpacking  (a, b = x, y  or  arr[i], arr[j] = ...) ──
+        if (
+            len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Tuple)
+        ):
+            lhs_elts = node.targets[0].elts
+
+            # RHS is also a Tuple of the same arity → element-wise unpack
+            if isinstance(node.value, ast.Tuple) and len(node.value.elts) == len(lhs_elts):
+                rhs_elts = node.value.elts
+
+                # Fast path: pure swap  (a, b = b, a)
+                if len(lhs_elts) == 2:
+                    l0 = self._expr(lhs_elts[0])
+                    l1 = self._expr(lhs_elts[1])
+                    r0 = self._expr(rhs_elts[0])
+                    r1 = self._expr(rhs_elts[1])
+                    if l0 == r1 and l1 == r0:
+                        self._includes.add("<algorithm>")
+                        self._emit(f"std::swap({l0}, {l1});")
+                        return
+
+                # General case: stash all RHS values in temps first to avoid
+                # aliasing, then assign to LHS targets.
+                tmp_names: list[str] = []
+                for i, rhs_elt in enumerate(rhs_elts):
+                    tmp = f"_t{i}_"
+                    self._emit(f"auto {tmp} = {self._expr(rhs_elt)};")
+                    tmp_names.append(tmp)
+                for lhs_elt, tmp in zip(lhs_elts, tmp_names):
+                    if isinstance(lhs_elt, ast.Name):
+                        name = lhs_elt.id
+                        if name in self._declared:
+                            self._emit(f"{name} = {tmp};")
+                        else:
+                            self._emit(f"auto {name} = {tmp};")
+                            self._declared.add(name)
+                    else:
+                        # Subscript / Attribute target
+                        self._emit(f"{self._expr(lhs_elt)} = {tmp};")
+                return
+
+            # RHS is a single expression (e.g. pair/struct unpack) — best effort
+            val_str = self._expr(node.value)
+            self._warn("Tuple unpacking from non-tuple RHS — partial support")
+            for i, lhs_elt in enumerate(lhs_elts):
+                if isinstance(lhs_elt, ast.Name):
+                    name = lhs_elt.id
+                    if name not in self._declared:
+                        self._emit(f"auto {name} = std::get<{i}>({val_str});")
+                        self._declared.add(name)
+                    else:
+                        self._emit(f"{name} = std::get<{i}>({val_str});")
+                else:
+                    self._emit(f"{self._expr(lhs_elt)} = std::get<{i}>({val_str});")
+            return
+
+        # ── Case: chained assignment  x = y = expr ────────────────────────────
+        if len(node.targets) > 1:
+            val_str = self._expr(node.value)
             for t in node.targets:
-                name_str = self._expr(t)
-                self._emit(f"auto {name_str} = {val};")
+                _assign_single(t, val_str)
+            return
+
+        # ── Case: single target (name / subscript / attribute) ────────────────
+        _assign_single(node.targets[0], self._expr(node.value))
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         cpp_type = self._annotation_to_cpp(node.annotation)
@@ -1009,3 +1103,4 @@ if __name__ == "__main__":
     debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
     logger.info("Starting Astmize API on port %d  (debug=%s)", port, debug)
     app.run(host="0.0.0.0", port=port, debug=debug)
+
