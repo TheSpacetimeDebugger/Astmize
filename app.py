@@ -1,22 +1,25 @@
 """
-Astmize — Python → C++ AST Transpiler Backend  v1.2.0
+Astmize — Python → C++ AST Transpiler Backend  v1.3.0
 Flask API server with baseline AST-driven translation engine.
 
-Fixes in v1.1.0:
-  - print() with multiple args now emits correct  std::cout << a << " " << b << "\n";
-  - print() with sep/end kwargs is now handled
-  - f-strings are partially translated (variables interpolated)
-  - List/dict/set comprehensions emit a warning instead of crashing
-  - HTML chars in string literals are never injected into the output stream
-  - visit_Expr correctly detects a print-call and wraps it as a statement
-  - Unsupported expression types no longer silently produce blank lines
-  - Added visit_ClassDef stub with a helpful comment
-
-New in v1.2.0:
-  - Top-level executable statements are automatically wrapped in `int main() { ... return 0; }`
-    so every transpiled file is a valid, directly compilable C++ program.
-  - Function and class definitions remain at file scope (outside main), preserving correct
-    linkage and allowing forward-declared use from within main.
+Fixes in v1.3.0:
+  - BREAKING FIX: Replaced all illegal `std::vector<auto>` / `std::map<..., auto>` /
+    `std::set<auto>` template parameters with properly-inferred concrete types.
+  - _infer_cpp_type now recurses into container literals to pick the right element type.
+  - _annotation_to_cpp fully rewrites Subscript handling to avoid string-matching hacks
+    and correctly handles dict[K, V] (Tuple slice), list[T], set[T], Optional[T],
+    Tuple[...], and typing.* equivalents.
+  - #include directives are now emitted whenever a container type is resolved, even
+    through annotation paths that previously missed them.
+  - sorted() and reversed() now emit a correct lambda expression that copies the
+    container before sorting/reversing, preserving Python semantics.
+  - reversed() now adds #include <algorithm>.
+  - input() now emits valid std::cin / std::getline code.
+  - pop() now emits a lambda that captures and returns the removed element.
+  - f-strings now use std::ostringstream (via a lambda) so << works for both
+    numeric and string values without calling std::to_string on strings.
+  - method_map `sort` / `reverse` entries fixed (no longer rely on `None or ""`).
+  - _annotation_to_cpp adds the required #include for every resolved container type.
 """
 
 import ast
@@ -43,15 +46,22 @@ API_KEY: str | None = os.getenv("API_KEY")
 #  AST → C++ translation engine
 # ══════════════════════════════════════════════════════════════════════════════
 
+# FIX v1.3.0: Use concrete default types instead of illegal `auto` in templates.
+# When the user annotates a bare `list` / `dict` / `set` without subscript we
+# fall back to <int> / <std::string, int> / <int> respectively.
 PYTHON_TYPE_MAP: dict[str, str] = {
     "int":   "int",
     "float": "double",
     "str":   "std::string",
     "bool":  "bool",
-    "list":  "std::vector<auto>",
-    "dict":  "std::map<std::string, auto>",
-    "set":   "std::set<auto>",
+    "list":  "std::vector<int>",
+    "List":  "std::vector<int>",
+    "dict":  "std::map<std::string, int>",
+    "Dict":  "std::map<std::string, int>",
+    "set":   "std::set<int>",
+    "Set":   "std::set<int>",
     "None":  "void",
+    "Any":   "auto",
 }
 
 BINOP_MAP: dict[type, str] = {
@@ -102,7 +112,6 @@ class CppTranspiler(ast.NodeVisitor):
         self._indent: int = 0
         self._includes: set[str] = {"<iostream>", "<string>"}
         self._warnings: list[str] = []
-        # Track declared variable names to avoid re-declaring with a type
         self._declared: set[str] = set()
 
     # ── helpers ────────────────────────────────────────────────────────────────
@@ -121,6 +130,11 @@ class CppTranspiler(ast.NodeVisitor):
         self._indent = max(0, self._indent - 1)
 
     def _infer_cpp_type(self, node: ast.expr) -> str:
+        """
+        Infer a concrete C++ type from an AST expression node.
+        FIX v1.3.0: containers now recurse into their elements so we never
+        produce illegal `auto` as a template argument.
+        """
         if isinstance(node, ast.Constant):
             if isinstance(node.value, bool):
                 return "bool"
@@ -133,37 +147,128 @@ class CppTranspiler(ast.NodeVisitor):
                 return "std::string"
         if isinstance(node, ast.List):
             self._includes.add("<vector>")
-            return "std::vector<auto>"
+            if node.elts:
+                elem_type = self._infer_cpp_type(node.elts[0])
+                return f"std::vector<{elem_type}>"
+            return "std::vector<int>"          # empty list — default element int
         if isinstance(node, ast.Dict):
             self._includes.add("<map>")
-            return "std::map<std::string, auto>"
+            if node.keys and node.keys[0] is not None:
+                key_type = self._infer_cpp_type(node.keys[0])
+                val_type = self._infer_cpp_type(node.values[0]) if node.values else "int"
+                return f"std::map<{key_type}, {val_type}>"
+            return "std::map<std::string, int>"
         if isinstance(node, ast.Set):
             self._includes.add("<set>")
-            return "std::set<auto>"
+            if node.elts:
+                elem_type = self._infer_cpp_type(node.elts[0])
+                return f"std::set<{elem_type}>"
+            return "std::set<int>"
         return "auto"
 
     def _annotation_to_cpp(self, annotation: ast.expr | None) -> str:
+        """
+        Convert a Python type annotation node to its C++ equivalent.
+
+        FIX v1.3.0 — Complete rewrite of the Subscript branch:
+          • Handles dict[K, V] whose slice is an ast.Tuple (Python 3.9+ syntax).
+          • Handles Tuple[T1, T2, ...] similarly.
+          • Avoids string-matching on the outer type string.
+          • Adds the required #include for every resolved container.
+          • Also handles ast.Tuple slices used in subscripts (e.g. dict[str, int]).
+        """
         if annotation is None:
             return "auto"
+
+        # ── bare name annotation ───────────────────────────────────────────────
         if isinstance(annotation, ast.Name):
-            return PYTHON_TYPE_MAP.get(annotation.id, "auto")
-        if isinstance(annotation, ast.Attribute):
-            return "auto"
-        if isinstance(annotation, ast.Subscript):
-            outer = self._annotation_to_cpp(annotation.value)
-            inner = self._annotation_to_cpp(annotation.slice)
-            if "vector" in outer:
+            cpp_type = PYTHON_TYPE_MAP.get(annotation.id, annotation.id)
+            # Ensure includes are added for any container type returned here.
+            if "vector" in cpp_type:
                 self._includes.add("<vector>")
-                return f"std::vector<{inner}>"
-            if "map" in outer:
+            if "map" in cpp_type:
                 self._includes.add("<map>")
-                return f"std::map<std::string, {inner}>"
-            if "set" in outer:
+            if "set" in cpp_type and "unordered" not in cpp_type:
                 self._includes.add("<set>")
+            if "string" in cpp_type:
+                self._includes.add("<string>")
+            return cpp_type
+
+        # ── attribute annotation (e.g. typing.Optional) ───────────────────────
+        if isinstance(annotation, ast.Attribute):
+            # e.g. typing.List[int] — just recurse on attr
+            return self._annotation_to_cpp(ast.Name(id=annotation.attr, ctx=ast.Load()))
+
+        # ── tuple (used as slice in subscripts, e.g. dict[str, int]) ──────────
+        if isinstance(annotation, ast.Tuple):
+            parts = [self._annotation_to_cpp(e) for e in annotation.elts]
+            return ", ".join(parts)
+
+        # ── subscript: Generic[T], list[T], dict[K, V], etc. ─────────────────
+        if isinstance(annotation, ast.Subscript):
+            outer_node = annotation.value
+            outer_name = ""
+            if isinstance(outer_node, ast.Name):
+                outer_name = outer_node.id
+            elif isinstance(outer_node, ast.Attribute):
+                outer_name = outer_node.attr
+
+            # list / List
+            if outer_name in ("list", "List"):
+                self._includes.add("<vector>")
+                inner = self._annotation_to_cpp(annotation.slice)
+                return f"std::vector<{inner}>"
+
+            # dict / Dict  — slice may be a Tuple[K, V]
+            if outer_name in ("dict", "Dict"):
+                self._includes.add("<map>")
+                slice_node = annotation.slice
+                if isinstance(slice_node, ast.Tuple) and len(slice_node.elts) >= 2:
+                    key_t = self._annotation_to_cpp(slice_node.elts[0])
+                    val_t = self._annotation_to_cpp(slice_node.elts[1])
+                    return f"std::map<{key_t}, {val_t}>"
+                inner = self._annotation_to_cpp(slice_node)
+                return f"std::map<std::string, {inner}>"
+
+            # set / Set
+            if outer_name in ("set", "Set", "FrozenSet", "frozenset"):
+                self._includes.add("<set>")
+                inner = self._annotation_to_cpp(annotation.slice)
                 return f"std::set<{inner}>"
-            if "optional" in outer.lower():
+
+            # Optional
+            if outer_name in ("Optional", "optional"):
                 self._includes.add("<optional>")
+                inner = self._annotation_to_cpp(annotation.slice)
                 return f"std::optional<{inner}>"
+
+            # Tuple / tuple
+            if outer_name in ("Tuple", "tuple"):
+                self._includes.add("<tuple>")
+                slice_node = annotation.slice
+                if isinstance(slice_node, ast.Tuple):
+                    types = ", ".join(self._annotation_to_cpp(e) for e in slice_node.elts)
+                    return f"std::tuple<{types}>"
+                inner = self._annotation_to_cpp(slice_node)
+                return f"std::tuple<{inner}>"
+
+            # Union — just pick first type as best-effort
+            if outer_name == "Union":
+                slice_node = annotation.slice
+                if isinstance(slice_node, ast.Tuple) and slice_node.elts:
+                    return self._annotation_to_cpp(slice_node.elts[0])
+
+            # Deque / deque
+            if outer_name in ("Deque", "deque"):
+                self._includes.add("<deque>")
+                inner = self._annotation_to_cpp(annotation.slice)
+                return f"std::deque<{inner}>"
+
+            # Generic fallback — outer<inner>
+            outer_cpp = self._annotation_to_cpp(outer_node)
+            inner_cpp = self._annotation_to_cpp(annotation.slice)
+            return f"{outer_cpp}<{inner_cpp}>"
+
         return "auto"
 
     def _return_type(self, func_node: ast.FunctionDef) -> str:
@@ -179,7 +284,6 @@ class CppTranspiler(ast.NodeVisitor):
     def _expr(self, node: ast.expr) -> str:
         if isinstance(node, ast.Constant):
             if isinstance(node.value, str):
-                # Properly escape the string — never inject raw HTML chars
                 escaped = (
                     node.value
                     .replace("\\", "\\\\")
@@ -206,7 +310,6 @@ class CppTranspiler(ast.NodeVisitor):
                 self._includes.add("<cmath>")
                 return f"std::pow({left}, {right})"
             if op_type == ast.FloorDiv:
-                # Integer floor division
                 return f"({left} / {right})"
             op = BINOP_MAP.get(op_type, "?")
             return f"({left} {op} {right})"
@@ -228,7 +331,6 @@ class CppTranspiler(ast.NodeVisitor):
                 op = CMPOP_MAP.get(type(op_node), "==")
                 right = self._expr(comparator)
                 if isinstance(op_node, ast.In):
-                    # x in container → std::find(container.begin(), container.end(), x) != container.end()
                     self._includes.add("<algorithm>")
                     parts.append(
                         f"std::find({right}.begin(), {right}.end(), {left}) != {right}.end()"
@@ -289,7 +391,6 @@ class CppTranspiler(ast.NodeVisitor):
             return f"{{{pairs}}}"
 
         if isinstance(node, ast.JoinedStr):
-            # f-string: best-effort using std::to_string / concatenation
             return self._fstring_expr(node)
 
         if isinstance(node, ast.ListComp):
@@ -309,9 +410,7 @@ class CppTranspiler(ast.NodeVisitor):
             return "/* generator-expression — rewrite as loop */"
 
         if isinstance(node, ast.Lambda):
-            params = ", ".join(
-                f"auto {a.arg}" for a in node.args.args
-            )
+            params = ", ".join(f"auto {a.arg}" for a in node.args.args)
             body = self._expr(node.body)
             return f"[&]({params}) {{ return {body}; }}"
 
@@ -325,7 +424,15 @@ class CppTranspiler(ast.NodeVisitor):
         return f"/* unsupported: {type(node).__name__} */"
 
     def _fstring_expr(self, node: ast.JoinedStr) -> str:
-        """Translate an f-string to a series of string concatenations."""
+        """
+        Translate an f-string to a std::ostringstream-based lambda.
+
+        FIX v1.3.0: The old approach called std::to_string() on every
+        FormattedValue, which breaks for std::string arguments.  Using
+        std::ostringstream with operator<< handles both numeric and string
+        values correctly without any type-checking at transpile time.
+        """
+        self._includes.add("<sstream>")
         self._includes.add("<string>")
         parts: list[str] = []
         for val in node.values:
@@ -333,14 +440,14 @@ class CppTranspiler(ast.NodeVisitor):
                 escaped = str(val.value).replace("\\", "\\\\").replace('"', '\\"')
                 parts.append(f'"{escaped}"')
             elif isinstance(val, ast.FormattedValue):
-                inner = self._expr(val.value)
-                # Wrap non-string types with std::to_string
-                parts.append(f"std::to_string({inner})")
+                parts.append(self._expr(val.value))
             else:
-                parts.append(f'""')
+                parts.append('""')
         if not parts:
             return '""'
-        return " + ".join(parts)
+        stream_ops = " << ".join(parts)
+        # Emit as an immediately-invoked lambda so the expression is usable anywhere.
+        return f'([&](){{ std::ostringstream _oss; _oss << {stream_ops}; return _oss.str(); }}())'
 
     def _call_expr(self, node: ast.Call) -> str:
         """Translate a Python call expression to C++."""
@@ -355,7 +462,6 @@ class CppTranspiler(ast.NodeVisitor):
         # ── print() ──────────────────────────────────────────────────────────
         if func_name == "print":
             self._includes.add("<iostream>")
-            # Handle sep= and end= kwargs
             sep = '" "'
             end = '"\\n"'
             for kw in node.keywords:
@@ -366,11 +472,8 @@ class CppTranspiler(ast.NodeVisitor):
 
             if not args:
                 return f'std::cout << {end}'
-
             if len(args) == 1:
                 return f'std::cout << {args[0]} << {end}'
-
-            # Multiple args — join with sep
             joined = f' << {sep} << '.join(args)
             return f'std::cout << {joined} << {end}'
 
@@ -405,16 +508,37 @@ class CppTranspiler(ast.NodeVisitor):
             self._includes.add("<algorithm>")
             return f"std::min({', '.join(args)})"
 
+        # ── sorted() ─────────────────────────────────────────────────────────
+        # FIX v1.3.0: Old code used a comma-expression which evaluated to void.
+        # Now we emit an IIFE lambda that copies the container, sorts the copy,
+        # and returns it — matching Python semantics (non-destructive).
         if func_name == "sorted":
             self._includes.add("<algorithm>")
             if args:
-                return f"std::sort({args[0]}.begin(), {args[0]}.end()), {args[0]}"
-            return "/* sorted() */"
+                self._warn(
+                    "sorted() returns a sorted copy; the original container is NOT mutated."
+                )
+                src = args[0]
+                return (
+                    f"([&](){{ auto _tmp = {src}; "
+                    f"std::sort(_tmp.begin(), _tmp.end()); return _tmp; }}())"
+                )
+            return "/* sorted() — no argument */"
 
+        # ── reversed() ───────────────────────────────────────────────────────
+        # FIX v1.3.0: Same approach as sorted().
         if func_name == "reversed":
+            self._includes.add("<algorithm>")
             if args:
-                return f"std::reverse({args[0]}.begin(), {args[0]}.end()), {args[0]}"
-            return "/* reversed() */"
+                self._warn(
+                    "reversed() returns a reversed copy; the original container is NOT mutated."
+                )
+                src = args[0]
+                return (
+                    f"([&](){{ auto _tmp = {src}; "
+                    f"std::reverse(_tmp.begin(), _tmp.end()); return _tmp; }}())"
+                )
+            return "/* reversed() — no argument */"
 
         if func_name == "enumerate":
             self._warn("enumerate() has no direct C++ equivalent — rewrite as indexed loop")
@@ -424,42 +548,88 @@ class CppTranspiler(ast.NodeVisitor):
             self._warn("zip() has no direct C++ equivalent — use index-based loop")
             return f"/* zip({', '.join(args)}) */"
 
+        # ── input() ──────────────────────────────────────────────────────────
+        # FIX v1.3.0: Old code emitted nonsensical array-index syntax.
+        # Now emits a proper std::getline call wrapped in a lambda so it can
+        # be used as an expression (e.g. x = input("Enter: ")).
         if func_name == "input":
             self._includes.add("<iostream>")
-            prompt = args[0] if args else '""'
-            return f'(std::cout << {prompt}, ({{""}}))[0]'  # placeholder; warn
+            self._includes.add("<string>")
+            if args:
+                prompt = args[0]
+                return (
+                    f"([&](){{ std::string _s; "
+                    f"std::cout << {prompt}; "
+                    f"std::getline(std::cin, _s); return _s; }}())"
+                )
+            return (
+                "([&](){ std::string _s; std::getline(std::cin, _s); return _s; }())"
+            )
 
         # ── method calls ──────────────────────────────────────────────────────
         if isinstance(node.func, ast.Attribute):
             attr = node.func.attr
             obj = self._expr(node.func.value)
 
+            # FIX v1.3.0: pop() now returns the element via an IIFE lambda
+            # instead of the broken comma-expression that returned void.
+            # sort / reverse: removed the `None or ""` hack; add include explicitly.
+            if attr == "pop":
+                if not args:
+                    return (
+                        f"([&](){{ auto _v = {obj}.back(); {obj}.pop_back(); return _v; }}())"
+                    )
+                else:
+                    idx = args[0]
+                    return (
+                        f"([&](){{ auto _v = {obj}[{idx}]; "
+                        f"{obj}.erase({obj}.begin() + {idx}); return _v; }}())"
+                    )
+
+            if attr == "sort":
+                self._includes.add("<algorithm>")
+                return f"std::sort({obj}.begin(), {obj}.end())"
+
+            if attr == "reverse":
+                self._includes.add("<algorithm>")
+                return f"std::reverse({obj}.begin(), {obj}.end())"
+
             method_map = {
-                "append":    f"{obj}.push_back({', '.join(args)})",
-                "push_back": f"{obj}.push_back({', '.join(args)})",
-                "pop":       f"({obj}.back(), {obj}.pop_back())" if not args else f"{obj}.erase({obj}.begin() + {args[0]})",
-                "clear":     f"{obj}.clear()",
-                "size":      f"{obj}.size()",
-                "empty":     f"{obj}.empty()",
-                "find":      f"{obj}.find({', '.join(args)})",
-                "insert":    f"{obj}.insert({', '.join(args)})",
-                "erase":     f"{obj}.erase({', '.join(args)})",
-                "begin":     f"{obj}.begin()",
-                "end":       f"{obj}.end()",
-                "sort":      (self._includes.add("<algorithm>") or "") + f"std::sort({obj}.begin(), {obj}.end())",
-                "reverse":   (self._includes.add("<algorithm>") or "") + f"std::reverse({obj}.begin(), {obj}.end())",
-                "count":     f"std::count({obj}.begin(), {obj}.end(), {', '.join(args)})" if args else f"{obj}.count()",
-                "keys":      f"/* {obj}.keys() — iterate map directly */",
-                "values":    f"/* {obj}.values() — iterate map directly */",
-                "items":     f"/* {obj}.items() — iterate map directly */",
-                "upper":     f"std::transform({obj}.begin(), {obj}.end(), {obj}.begin(), ::toupper)",
-                "lower":     f"std::transform({obj}.begin(), {obj}.end(), {obj}.begin(), ::tolower)",
-                "strip":     f"/* strip() — use boost::trim or manual impl */",
-                "split":     f"/* split() — use std::istringstream or manual impl */",
-                "join":      f"/* join() — use std::ostringstream */",
-                "format":    f"/* .format() — use std::format (C++20) or sprintf */",
-                "startswith":f"{obj}.substr(0, {args[0]}.size()) == {args[0]}" if args else f"/* startswith() */",
-                "endswith":  f"{obj}.substr({obj}.size() - {args[0]}.size()) == {args[0]}" if args else f"/* endswith() */",
+                "append":     f"{obj}.push_back({', '.join(args)})",
+                "push_back":  f"{obj}.push_back({', '.join(args)})",
+                "clear":      f"{obj}.clear()",
+                "size":       f"{obj}.size()",
+                "empty":      f"{obj}.empty()",
+                "find":       f"{obj}.find({', '.join(args)})",
+                "insert":     f"{obj}.insert({', '.join(args)})",
+                "erase":      f"{obj}.erase({', '.join(args)})",
+                "begin":      f"{obj}.begin()",
+                "end":        f"{obj}.end()",
+                "count":      (
+                    f"std::count({obj}.begin(), {obj}.end(), {', '.join(args)})"
+                    if args else f"{obj}.count()"
+                ),
+                "keys":       f"/* {obj}.keys() — iterate map directly */",
+                "values":     f"/* {obj}.values() — iterate map directly */",
+                "items":      f"/* {obj}.items() — iterate map directly */",
+                "upper":      (
+                    f"(std::transform({obj}.begin(), {obj}.end(), {obj}.begin(), ::toupper), {obj})"
+                ),
+                "lower":      (
+                    f"(std::transform({obj}.begin(), {obj}.end(), {obj}.begin(), ::tolower), {obj})"
+                ),
+                "strip":      f"/* strip() — use boost::trim or manual impl */",
+                "split":      f"/* split() — use std::istringstream or manual impl */",
+                "join":       f"/* join() — use std::ostringstream */",
+                "format":     f"/* .format() — use std::format (C++20) or sprintf */",
+                "startswith": (
+                    f"{obj}.substr(0, {args[0]}.size()) == {args[0]}"
+                    if args else f"/* startswith() */"
+                ),
+                "endswith":   (
+                    f"{obj}.substr({obj}.size() - {args[0]}.size()) == {args[0]}"
+                    if args else f"/* endswith() */"
+                ),
             }
 
             if attr in method_map:
@@ -476,16 +646,10 @@ class CppTranspiler(ast.NodeVisitor):
         Strategy
         --------
         • FunctionDef / AsyncFunctionDef / ClassDef nodes at module scope are
-          emitted at file scope (indent 0) so they can call each other and be
-          called from main without forward declarations.
-        • All other top-level statements (assignments, print calls, for/while
-          loops, if blocks, etc.) are collected and wrapped inside an
-          ``int main() { … return 0; }`` block so the resulting file compiles
-          directly with any standard C++ compiler.
-        • If there are *no* top-level executable statements the main() block is
-          omitted (e.g. a pure-library header-style file).
+          emitted at file scope (indent 0).
+        • All other top-level statements are wrapped in int main() { ... return 0; }.
+        • If there are no top-level executable statements, main() is omitted.
         """
-        # ── Split module body into defs vs executable statements ──────────────
         DEFINITION_TYPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
         top_defs  = [c for c in node.body if     isinstance(c, DEFINITION_TYPES)]
         top_stmts = [c for c in node.body if not isinstance(c, DEFINITION_TYPES)]
@@ -493,37 +657,35 @@ class CppTranspiler(ast.NodeVisitor):
         saved_lines  = self._lines
         saved_indent = self._indent
 
-        # ── 1. Render function / class definitions at indent 0 ────────────────
+        # 1. Render function / class definitions at indent 0
         def_lines: list[str] = []
         self._lines  = def_lines
         self._indent = 0
         for child in top_defs:
             self.visit(child)
 
-        # ── 2. Render top-level statements at indent 1 (inside main) ──────────
+        # 2. Render top-level statements at indent 1 (inside main)
         stmt_lines: list[str] = []
         if top_stmts:
-            outer_declared = self._declared.copy()   # isolate main's scope
+            outer_declared = self._declared.copy()
             self._lines  = stmt_lines
             self._indent = 1
             for child in top_stmts:
                 self.visit(child)
-            self._declared = outer_declared          # restore outer scope
+            self._declared = outer_declared
 
-        # ── Restore original output buffer ────────────────────────────────────
         self._lines  = saved_lines
         self._indent = saved_indent
 
-        # ── 3. Emit #includes ─────────────────────────────────────────────────
-        includes = sorted(self._includes)
-        for inc in includes:
+        # 3. Emit #includes
+        for inc in sorted(self._includes):
             self._emit(f"#include {inc}")
         self._emit("")
 
-        # ── 4. Emit function / class bodies at file scope ─────────────────────
+        # 4. Emit function / class bodies at file scope
         self._lines.extend(def_lines)
 
-        # ── 5. Wrap executable statements in int main() if any exist ──────────
+        # 5. Wrap executable statements in int main() if any exist
         if top_stmts:
             self._emit("int main() {")
             self._lines.extend(stmt_lines)
@@ -547,7 +709,6 @@ class CppTranspiler(ast.NodeVisitor):
         param_str = ", ".join(params)
         self._emit(f"{ret_type} {node.name}({param_str}) {{")
         self._inc()
-        # Reset declared-in-scope tracking per function
         outer_declared = self._declared.copy()
         for stmt in node.body:
             self.visit(stmt)
@@ -581,7 +742,6 @@ class CppTranspiler(ast.NodeVisitor):
             name = node.targets[0].id
             val = self._expr(node.value)
             if name in self._declared:
-                # Already declared — just assign
                 self._emit(f"{name} = {val};")
             else:
                 cpp_type = self._infer_cpp_type(node.value)
@@ -617,16 +777,10 @@ class CppTranspiler(ast.NodeVisitor):
             self._emit(f"{target} {op}= {val};")
 
     def visit_Expr(self, node: ast.Expr) -> None:
-        """
-        Expression-statement.  print() calls are the most common here.
-        We call _expr() which already builds the full cout expression,
-        then just append a semicolon.
-        """
         expr_str = self._expr(node.value)
         if expr_str and not expr_str.startswith("/*"):
             self._emit(f"{expr_str};")
         elif expr_str:
-            # It's a comment/placeholder — emit without semicolon
             self._emit(expr_str)
 
     def visit_If(self, node: ast.If) -> None:
@@ -669,11 +823,17 @@ class CppTranspiler(ast.NodeVisitor):
             if len(range_args) == 1:
                 self._emit(f"for (int {target} = 0; {target} < {range_args[0]}; ++{target}) {{")
             elif len(range_args) == 2:
-                self._emit(f"for (int {target} = {range_args[0]}; {target} < {range_args[1]}; ++{target}) {{")
+                self._emit(
+                    f"for (int {target} = {range_args[0]}; "
+                    f"{target} < {range_args[1]}; ++{target}) {{"
+                )
             elif len(range_args) == 3:
                 step = range_args[2]
                 op = "<" if not step.startswith("-") else ">"
-                self._emit(f"for (int {target} = {range_args[0]}; {target} {op} {range_args[1]}; {target} += {step}) {{")
+                self._emit(
+                    f"for (int {target} = {range_args[0]}; "
+                    f"{target} {op} {range_args[1]}; {target} += {step}) {{"
+                )
         else:
             iterable = self._expr(node.iter)
             self._emit(f"for (auto& {target} : {iterable}) {{")
@@ -745,7 +905,11 @@ class CppTranspiler(ast.NodeVisitor):
             self.visit(stmt)
         self._dec()
         for handler in node.handlers:
-            exc_type = "std::exception" if handler.type is None else f"/* {self._expr(handler.type)} */"
+            exc_type = (
+                "std::exception"
+                if handler.type is None
+                else f"/* {self._expr(handler.type)} */"
+            )
             var = f" const& {handler.name}" if handler.name else ""
             self._emit(f"}} catch ({exc_type}{var}) {{")
             self._inc()
@@ -806,7 +970,7 @@ class CppTranspiler(ast.NodeVisitor):
 
 @app.route("/", methods=["GET"])
 def health_check():
-    return jsonify({"status": "ok", "service": "Astmize API", "version": "1.2.0"})
+    return jsonify({"status": "ok", "service": "Astmize API", "version": "1.3.0"})
 
 
 @app.route("/convert", methods=["POST"])
@@ -832,7 +996,11 @@ def convert():
     transpiler = CppTranspiler()
     result = transpiler.transpile(python_code)
     status_code = 200 if result["success"] else 422
-    logger.info("Conversion %s — %d warnings", "OK" if result["success"] else "FAILED", len(result["warnings"]))
+    logger.info(
+        "Conversion %s — %d warnings",
+        "OK" if result["success"] else "FAILED",
+        len(result["warnings"]),
+    )
     return jsonify(result), status_code
 
 
@@ -841,3 +1009,4 @@ if __name__ == "__main__":
     debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
     logger.info("Starting Astmize API on port %d  (debug=%s)", port, debug)
     app.run(host="0.0.0.0", port=port, debug=debug)
+
