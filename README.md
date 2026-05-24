@@ -30,7 +30,11 @@ The backend is a pure-Python Flask API — zero external AI dependencies for the
 astmize/
 ├── app.py            # Flask API + CppTranspiler (AST engine)
 ├── requirements.txt  # Production dependencies
+├── Astmize.html
+├── LICENSE.txt
 └── README.md
+
+
 ```
 
 **Key classes / routes**
