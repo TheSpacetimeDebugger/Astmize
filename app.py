@@ -1,13 +1,22 @@
 """
 Astmize — Python → C++ AST Transpiler Backend
-Flask API server with baseline AST-driven translation engine.
+Flask API server with Gemini 1.5 Flash AI engine + AST fallback.
 """
 
 import ast
 import os
+import json
 import logging
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+
+# ── Google GenAI SDK ───────────────────────────────────────────────────────────
+try:
+    from google import genai
+    from google.genai import types as genai_types
+    _GENAI_AVAILABLE = True
+except ImportError:
+    _GENAI_AVAILABLE = False
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -20,8 +29,106 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Future AI/LLM integration key — set via Render environment variable
+# AI/LLM integration key — set via Render environment variable
 API_KEY: str | None = os.getenv("API_KEY")
+
+# ── Gemini client (initialised once at startup if key is present) ──────────────
+_gemini_client = None
+if API_KEY and _GENAI_AVAILABLE:
+    try:
+        _gemini_client = genai.Client(api_key=API_KEY)
+        logger.info("Gemini client initialised successfully (model: gemini-1.5-flash)")
+    except Exception as exc:
+        logger.warning("Gemini client failed to initialise: %s — falling back to AST engine", exc)
+
+# ── Gemini system prompt ───────────────────────────────────────────────────────
+_GEMINI_SYSTEM_PROMPT = """
+You are an expert Python-to-C++ compiler engineer working inside the Astmize transpilation service.
+
+Your ONLY job is to translate the Python source code provided by the user into clean, optimised, production-quality C++ code.
+
+Rules you must follow without exception:
+1. Output ONLY a strict JSON object — no markdown fences, no prose, no explanation outside the JSON.
+2. The JSON must have exactly these keys:
+   {
+     "cpp_code":  "<full translated C++ source as a single string>",
+     "warnings":  ["<optional warning strings>"],
+     "success":   true | false,
+     "error":     null | "<error message string>"
+   }
+3. Always include the necessary #include headers at the top of cpp_code.
+4. Map Python types to idiomatic C++ types:
+   - int        → int
+   - float      → double
+   - str        → std::string
+   - bool       → bool
+   - list[T]    → std::vector<T>
+   - dict[K, V] → std::map<K, V>
+   - None       → void (as return type)
+5. Map Python constructs to idiomatic C++:
+   - for i in range(n)       → for (int i = 0; i < n; ++i)
+   - for item in collection  → for (auto& item : collection)
+   - print(...)              → std::cout << ... << "\\n"
+   - while condition         → while (condition)
+   - if/elif/else            → if/else if/else
+   - a if cond else b        → (cond ? a : b)
+   - len(x)                  → x.size()
+6. Optimise the output where semantically safe:
+   - Use const references for function parameters where the value is not mutated.
+   - Use constexpr for compile-time constants.
+   - Prefer ++i over i++ in loop increments.
+   - Use std::move where appropriate.
+7. If the Python code contains constructs you cannot translate (e.g. decorators, metaclasses,
+   yield), still attempt the translation, emit a C++ comment at that line, and add an entry to
+   the "warnings" array explaining what was skipped.
+8. If the input is not valid Python, set "success" to false and describe the issue in "error".
+9. Never wrap the JSON in markdown code blocks or add any text outside the JSON object.
+""".strip()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Gemini AI transpilation layer
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _gemini_transpile(python_code: str) -> dict:
+    """
+    Send *python_code* to Gemini 1.5 Flash and parse its strict JSON response.
+
+    Returns the same dict shape as CppTranspiler.transpile():
+        { cpp_code, warnings, success, error }
+
+    Raises RuntimeError on any SDK / network / parse failure so the caller
+    can catch it and fall back to the AST engine.
+    """
+    response = _gemini_client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=python_code,
+        config=genai_types.GenerateContentConfig(
+            system_instruction=_GEMINI_SYSTEM_PROMPT,
+            temperature=0.1,          # near-deterministic for code generation
+            max_output_tokens=8192,
+        ),
+    )
+
+    raw_text: str = response.text.strip()
+
+    # Strip accidental markdown fences the model sometimes emits anyway
+    if raw_text.startswith("```"):
+        raw_text = raw_text.split("\n", 1)[-1]          # drop opening fence line
+        raw_text = raw_text.rsplit("```", 1)[0].strip()  # drop closing fence
+
+    try:
+        result = json.loads(raw_text)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Gemini returned non-JSON output: {exc}") from exc
+
+    # Normalise — guarantee all required keys exist
+    result.setdefault("cpp_code", "")
+    result.setdefault("warnings", [])
+    result.setdefault("success", bool(result.get("cpp_code")))
+    result.setdefault("error", None)
+
+    return result
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -544,18 +651,36 @@ def convert():
 
     logger.info("Received conversion request (%d chars)", len(python_code))
 
-    # ── Future hook: swap in an LLM call here using API_KEY ──────────────────
-    # if API_KEY:
-    #     result = llm_transpile(python_code, api_key=API_KEY)
-    # else:
-    #     result = CppTranspiler().transpile(python_code)
-    # ─────────────────────────────────────────────────────────────────────────
+    # ── Engine selection: Gemini AI  ›  AST fallback ──────────────────────────────
+    engine_used: str = "ast"
 
-    transpiler = CppTranspiler()
-    result = transpiler.transpile(python_code)
+    if _gemini_client is not None:
+        # ── Path A: Gemini 1.5 Flash ─────────────────────────────────
+        try:
+            logger.info("Dispatching to Gemini 1.5 Flash …")
+            result = _gemini_transpile(python_code)
+            engine_used = "gemini-1.5-flash"
+            logger.info("Gemini conversion %s — %d warnings",
+                        "OK" if result["success"] else "FAILED",
+                        len(result.get("warnings", [])))
+        except Exception as exc:
+            # Any SDK / network / JSON parse error → fall back gracefully
+            logger.warning("Gemini call failed (%s) — falling back to AST engine", exc)
+            result = CppTranspiler().transpile(python_code)
+    else:
+        # ── Path B: local AST engine ────────────────────────────────
+        if not API_KEY:
+            logger.info("API_KEY not set — using AST engine")
+        elif not _GENAI_AVAILABLE:
+            logger.warning("google-genai SDK not installed — using AST engine")
+        result = CppTranspiler().transpile(python_code)
+
+    # Stamp which engine produced this response (useful for frontend / debugging)
+    result["engine"] = engine_used
 
     status_code = 200 if result["success"] else 422
-    logger.info("Conversion %s — %d warnings", "OK" if result["success"] else "FAILED", len(result["warnings"]))
+    logger.info("Response ready  engine=%-20s  status=%d  warnings=%d",
+                engine_used, status_code, len(result.get("warnings", [])))
 
     return jsonify(result), status_code
 
