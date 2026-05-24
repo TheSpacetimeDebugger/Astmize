@@ -1009,4 +1009,3 @@ if __name__ == "__main__":
     debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
     logger.info("Starting Astmize API on port %d  (debug=%s)", port, debug)
     app.run(host="0.0.0.0", port=port, debug=debug)
-
