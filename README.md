@@ -1,5 +1,5 @@
 # Astmize ⚡
-
+![API Status](https://img.shields.io/badge/API-v1.3.0-green.svg)
 > **Python → C++ AST Transpiler** — instantly translate and optimize your Python source code into fast, syntax-valid C++.
 
 ---
@@ -201,6 +201,8 @@ print(data["cpp_code"])
 
 4. (Optional) Add `API_KEY` under **Environment Variables**.
 
+Changelog: 
+Fixes v1.3.0
 ---
 
 ## License
