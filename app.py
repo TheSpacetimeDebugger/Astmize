@@ -802,10 +802,45 @@ class CppTranspiler(ast.NodeVisitor):
         # 4. Emit function / class bodies at file scope
         self._lines.extend(def_lines)
 
-        # 5. Wrap executable statements in int main() if any exist
+        # 5. Wrap executable statements in int main() if any exist.
+        #    If there are NO top-level statements but there ARE class definitions,
+        #    emit a minimal main() so the binary links and Wandbox can run it.
         if top_stmts:
             self._emit("int main() {")
             self._lines.extend(stmt_lines)
+            self._emit("    return 0;")
+            self._emit("}")
+        elif any(isinstance(c, ast.ClassDef) for c in top_defs):
+            self._emit("int main() {")
+            self._emit("    // Auto-generated stub — add your own logic here")
+            for cls in top_defs:
+                if not isinstance(cls, ast.ClassDef):
+                    continue
+                cls_name = cls.name
+                init_node = next(
+                    (m for m in cls.body
+                     if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef))
+                     and m.name == "__init__"),
+                    None
+                )
+                params = [a for a in init_node.args.args if a.arg != "self"] if init_node else []
+
+                def _default_for(arg: ast.arg) -> str:
+                    inferred = self._infer_member_type(arg.arg, None)
+                    if inferred == "std::string":
+                        return f'"{arg.arg}"'
+                    if inferred == "bool":
+                        return "true"
+                    if inferred == "double":
+                        return "0.0"
+                    return "0"
+
+                if not params:
+                    self._emit(f"    {cls_name} obj;")
+                else:
+                    defaults = ", ".join(_default_for(p) for p in params)
+                    self._emit(f"    {cls_name} obj({defaults});")
+                    self._emit(f"    (void)obj;")
             self._emit("    return 0;")
             self._emit("}")
 
