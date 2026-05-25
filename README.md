@@ -185,8 +185,8 @@ print(data["cpp_code"])
 | `break` / `continue` / `pass` | ✅ |
 | `len()`, `abs()`, `max()`, `min()` … | ✅ |
 | `list.append()` | ✅ |
-| Classes / decorators / generators | 🔜 |
-| `async/await` | 🔜 |
+| Classes / decorators / generators | 🛠 |
+| `async/await` | 🛠 |
 
 ---
 
