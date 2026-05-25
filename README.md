@@ -1,5 +1,5 @@
 # Astmize ⚡
-![API Status](https://img.shields.io/badge/API-v1.4.0-green.svg)
+![API Status](https://img.shields.io/badge/API-v1.4.2-green.svg)
 > **Python → C++ AST Transpiler** — instantly translate and optimize your Python source code into fast, syntax-valid C++.
 
 ---
