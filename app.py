@@ -1,6 +1,25 @@
 """
-Astmize — Python → C++ AST Transpiler Backend  v1.4.0
+Astmize — Python → C++ AST Transpiler Backend  v1.4.1
 Flask API server with baseline AST-driven translation engine.
+
+Changes in v1.4.1:
+  - TYPE INFERENCE ENGINE: Added _infer_member_type() — a dedicated smart
+    inference method for class member variables (self.x assignments).
+      • Replaces the old _infer_cpp_type() call in _collect_self_attrs() which
+        could produce `auto`, an illegal type for non-static data members in C++.
+      • Priority 1 — value-based: delegates to existing _infer_cpp_type(); if the
+        RHS is a literal or container, the concrete type is used directly.
+      • Priority 2 — name-based: splits the attribute name on underscores and
+        checks each token against four keyword sets:
+          - _BOOL_KEYWORDS    → bool  (also catches is_/has_/can_/should_… prefixes)
+          - _STRING_KEYWORDS  → std::string
+          - _FLOAT_KEYWORDS   → double
+          - _INT_KEYWORDS     → int
+      • Priority 3 — safe fallback: emits `int` instead of `auto`, which C++
+        always accepts as a non-static data member without an initialiser.
+      • AnnAssign branch in _collect_self_attrs() also patched: if the Python
+        annotation resolves to `auto` (e.g. typing.Any or an unknown type),
+        _infer_member_type() is called instead of emitting `auto`.
 
 Changes in v1.4.0:
   - SECURITY: Added Flask-Limiter with 60 req/min per IP on /convert
@@ -194,6 +213,97 @@ class CppTranspiler(ast.NodeVisitor):
                 return f"std::set<{elem_type}>"
             return "std::set<int>"
         return "auto"
+
+    # ── Keyword sets for name-based type inference ─────────────────────────────
+    _STRING_KEYWORDS: frozenset[str] = frozenset({
+        "name", "title", "text", "label", "message", "msg", "description",
+        "desc", "info", "tag", "key", "value", "url", "path", "filename",
+        "file", "content", "body", "subject", "prefix", "suffix", "token",
+        "word", "line", "output", "input", "result", "response", "query",
+        "email", "address", "city", "country", "language", "lang", "color",
+        "colour", "type", "kind", "category", "status", "state", "mode",
+        "format", "encoding", "charset", "symbol", "alias", "username",
+        "password", "secret", "comment", "note", "summary", "header",
+    })
+
+    _INT_KEYWORDS: frozenset[str] = frozenset({
+        "speed", "damage", "ammo", "battery", "score", "count", "age",
+        "level", "rank", "index", "id", "num", "number", "total", "size",
+        "length", "width", "height", "weight", "capacity", "limit", "max",
+        "min", "offset", "step", "distance", "health", "mana", "stamina",
+        "experience", "exp", "power", "strength", "defense", "armor",
+        "quantity", "amount", "duration", "timeout", "port", "priority",
+        "version", "code", "error", "flag", "tick", "frame", "pixel",
+        "row", "col", "column", "page", "cursor", "position", "pos",
+        "order", "depth", "degree", "generation", "iteration", "attempt",
+        "retry", "threshold", "interval", "delay", "timeout", "pid",
+    })
+
+    _FLOAT_KEYWORDS: frozenset[str] = frozenset({
+        "rate", "ratio", "factor", "scale", "weight", "score", "probability",
+        "prob", "density", "pressure", "temperature", "temp", "angle",
+        "rotation", "velocity", "acceleration", "force", "energy", "mass",
+        "gravity", "friction", "opacity", "alpha", "beta", "gamma",
+        "latitude", "longitude", "lat", "lon", "lng", "radius", "diameter",
+        "percent", "percentage", "average", "avg", "mean", "variance",
+        "deviation", "std", "precision", "tolerance", "epsilon",
+    })
+
+    _BOOL_KEYWORDS: frozenset[str] = frozenset({
+        "is_", "has_", "can_", "should_", "was_", "will_", "enable",
+        "enabled", "disable", "disabled", "active", "inactive", "visible",
+        "hidden", "open", "closed", "locked", "unlocked", "paused",
+        "running", "stopped", "ready", "done", "finished", "started",
+        "loading", "loaded", "valid", "invalid", "success", "failed",
+        "error", "alive", "dead", "online", "offline", "connected",
+        "authenticated", "authorized", "muted", "debug", "verbose",
+    })
+
+    def _infer_member_type(self, attr_name: str, value_node: ast.expr | None) -> str:
+        """
+        Smart type inference for class member variables (self.x assignments).
+
+        Priority order:
+          1. If the value node has a concrete type (Constant / container), use it.
+          2. If the attribute name contains a recognised keyword, use the mapped type.
+          3. Fall back to `int` (safe, always accepted by C++ as a non-static data member).
+
+        Never returns `auto` — that is illegal for non-static data members in C++.
+        """
+        # ── 1. Value-based inference ───────────────────────────────────────────
+        if value_node is not None:
+            inferred = self._infer_cpp_type(value_node)
+            if inferred != "auto":
+                return inferred
+
+        # ── 2. Name-based inference ────────────────────────────────────────────
+        name_lower = attr_name.lower()
+
+        # Bool: check prefix patterns first (is_active, has_ammo, …)
+        for prefix in ("is_", "has_", "can_", "should_", "was_", "will_"):
+            if name_lower.startswith(prefix):
+                return "bool"
+
+        # Exact or substring match against keyword sets
+        # Split on underscores so "player_speed" matches "speed"
+        parts = set(name_lower.split("_")) | {name_lower}
+
+        for part in parts:
+            if part in self._BOOL_KEYWORDS:
+                return "bool"
+        for part in parts:
+            if part in self._STRING_KEYWORDS:
+                self._includes.add("<string>")
+                return "std::string"
+        for part in parts:
+            if part in self._FLOAT_KEYWORDS:
+                return "double"
+        for part in parts:
+            if part in self._INT_KEYWORDS:
+                return "int"
+
+        # ── 3. Safe fallback — never `auto` ───────────────────────────────────
+        return "int"
 
     def _annotation_to_cpp(self, annotation: ast.expr | None) -> str:
         """Convert a Python type annotation node to its C++ equivalent."""
@@ -749,7 +859,7 @@ class CppTranspiler(ast.NodeVisitor):
                         and tgt.attr not in seen
                     ):
                         seen.add(tgt.attr)
-                        cpp_type = self._infer_cpp_type(stmt.value)
+                        cpp_type = self._infer_member_type(tgt.attr, stmt.value)
                         attrs.append((tgt.attr, cpp_type))
             # ast.AnnAssign: self.x: int = …
             elif isinstance(stmt, ast.AnnAssign):
@@ -762,6 +872,11 @@ class CppTranspiler(ast.NodeVisitor):
                 ):
                     seen.add(tgt.attr)
                     cpp_type = self._annotation_to_cpp(stmt.annotation)
+                    # If annotation resolves to `auto` (e.g. Any or unknown),
+                    # fall through to name/value-based inference so we never
+                    # emit `auto` as a non-static data member.
+                    if cpp_type == "auto":
+                        cpp_type = self._infer_member_type(tgt.attr, stmt.value)
                     attrs.append((tgt.attr, cpp_type))
         return attrs
 
@@ -1267,7 +1382,7 @@ class _SelfRewriter(ast.NodeTransformer):
 
 @app.route("/", methods=["GET"])
 def health_check():
-    return jsonify({"status": "ok", "service": "Astmize API", "version": "1.4.0"})
+    return jsonify({"status": "ok", "service": "Astmize API", "version": "1.4.1"})
 
 
 @app.route("/convert", methods=["POST"])
