@@ -1,5 +1,5 @@
 """
-Astmize — Python → C++ AST Transpiler Backend  v1.4.1
+Astmize — Python → C++ AST Transpiler Backend  v1.4.2
 Flask API server with baseline AST-driven translation engine.
 
 Changes in v1.4.1:
@@ -1060,7 +1060,12 @@ class CppTranspiler(ast.NodeVisitor):
         def _assign_single(target: ast.expr, val_expr: str) -> None:
             if isinstance(target, ast.Name):
                 name = target.id
-                if name in self._declared:
+                # After _SelfRewriter, `self.x` becomes Name(id="this->x").
+                # These are already-declared class members — never re-declare
+                # them with a type prefix; just emit the plain assignment.
+                if name.startswith("this->"):
+                    self._emit(f"{name} = {val_expr};")
+                elif name in self._declared:
                     self._emit(f"{name} = {val_expr};")
                 else:
                     cpp_type = self._infer_cpp_type(node.value)
@@ -1136,13 +1141,23 @@ class CppTranspiler(ast.NodeVisitor):
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         cpp_type = self._annotation_to_cpp(node.annotation)
         name = self._expr(node.target)
-        if node.value:
+        # After _SelfRewriter, `self.x: T = v` targets render as "this->x".
+        # The member is already declared in the class body — emit a plain
+        # assignment without repeating the type.
+        if name.startswith("this->"):
+            if node.value:
+                val = self._expr(node.value)
+                self._emit(f"{name} = {val};")
+            # No value → nothing to emit inside the constructor/method body
+        elif node.value:
             val = self._expr(node.value)
             self._emit(f"{cpp_type} {name} = {val};")
+            if isinstance(node.target, ast.Name):
+                self._declared.add(node.target.id)
         else:
             self._emit(f"{cpp_type} {name};")
-        if isinstance(node.target, ast.Name):
-            self._declared.add(node.target.id)
+            if isinstance(node.target, ast.Name):
+                self._declared.add(node.target.id)
 
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
         op_type = type(node.op)
@@ -1382,7 +1397,7 @@ class _SelfRewriter(ast.NodeTransformer):
 
 @app.route("/", methods=["GET"])
 def health_check():
-    return jsonify({"status": "ok", "service": "Astmize API", "version": "1.4.1"})
+    return jsonify({"status": "ok", "service": "Astmize API", "version": "1.4.2"})
 
 
 @app.route("/convert", methods=["POST"])
