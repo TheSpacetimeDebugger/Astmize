@@ -205,7 +205,7 @@ print(data["cpp_code"])
 4. (Optional) Add `API_KEY` under **Environment Variables**.
 
 Changelog: 
-Fixes v1.3.0
+Fixes v1.4.2
 ---
 ## communication:
 Our official account [sydbrahim02@gmail.com]
