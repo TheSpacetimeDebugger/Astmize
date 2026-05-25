@@ -207,7 +207,9 @@ print(data["cpp_code"])
 Changelog: 
 Fixes v1.3.0
 ---
-
+## communication:
+Our official account [sydbrahim02@gmail.com]
+---
 ## License
 
 MIT © Astmize
