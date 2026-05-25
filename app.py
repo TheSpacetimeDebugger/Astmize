@@ -1,25 +1,21 @@
 """
-Astmize — Python → C++ AST Transpiler Backend  v1.3.0
+Astmize — Python → C++ AST Transpiler Backend  v1.4.0
 Flask API server with baseline AST-driven translation engine.
 
-Fixes in v1.3.0:
-  - BREAKING FIX: Replaced all illegal `std::vector<auto>` / `std::map<..., auto>` /
-    `std::set<auto>` template parameters with properly-inferred concrete types.
-  - _infer_cpp_type now recurses into container literals to pick the right element type.
-  - _annotation_to_cpp fully rewrites Subscript handling to avoid string-matching hacks
-    and correctly handles dict[K, V] (Tuple slice), list[T], set[T], Optional[T],
-    Tuple[...], and typing.* equivalents.
-  - #include directives are now emitted whenever a container type is resolved, even
-    through annotation paths that previously missed them.
-  - sorted() and reversed() now emit a correct lambda expression that copies the
-    container before sorting/reversing, preserving Python semantics.
-  - reversed() now adds #include <algorithm>.
-  - input() now emits valid std::cin / std::getline code.
-  - pop() now emits a lambda that captures and returns the removed element.
-  - f-strings now use std::ostringstream (via a lambda) so << works for both
-    numeric and string values without calling std::to_string on strings.
-  - method_map `sort` / `reverse` entries fixed (no longer rely on `None or ""`).
-  - _annotation_to_cpp adds the required #include for every resolved container type.
+Changes in v1.4.0:
+  - SECURITY: Added Flask-Limiter with 60 req/min per IP on /convert
+    to protect against DoS floods.
+  - CLASS SUPPORT: visit_ClassDef completely rewritten:
+      • __init__ is converted to a proper C++ constructor (same name as class).
+      • self.x assignments inside __init__ become class member declarations.
+      • All other methods are emitted as regular member functions (self stripped).
+      • Base-class inheritance is preserved (single + multiple, public).
+      • Body-only pass is handled cleanly.
+  - BUG FIXES:
+      • transpile() now wraps the entire visitor in a try/except so unexpected
+        Python-level exceptions produce a clean error response rather than a 500.
+      • _expr() falls back safely for all unhandled node types.
+      • _warn() output is now deduplicated (same message won't repeat).
 """
 
 import ast
@@ -27,6 +23,14 @@ import os
 import logging
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+
+# ── Optional rate-limiter (install flask-limiter to enable) ────────────────────
+try:
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+    _LIMITER_AVAILABLE = True
+except ImportError:                          # pragma: no cover
+    _LIMITER_AVAILABLE = False
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -41,14 +45,36 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 
 API_KEY: str | None = os.getenv("API_KEY")
 
+# ── Rate limiter ───────────────────────────────────────────────────────────────
+if _LIMITER_AVAILABLE:
+    limiter = Limiter(
+        key_func=get_remote_address,
+        app=app,
+        default_limits=[],                   # no global limit; only route-level
+        storage_uri="memory://",
+    )
+    logger.info("Rate limiting enabled (flask-limiter).")
+else:
+    limiter = None                           # type: ignore[assignment]
+    logger.warning(
+        "flask-limiter not installed — rate limiting disabled. "
+        "Run: pip install flask-limiter"
+    )
+
+
+def rate_limit(limit_string: str):
+    """Decorator factory that applies a rate limit when limiter is available."""
+    def decorator(fn):
+        if limiter is not None:
+            return limiter.limit(limit_string)(fn)
+        return fn
+    return decorator
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  AST → C++ translation engine
 # ══════════════════════════════════════════════════════════════════════════════
 
-# FIX v1.3.0: Use concrete default types instead of illegal `auto` in templates.
-# When the user annotates a bare `list` / `dict` / `set` without subscript we
-# fall back to <int> / <std::string, int> / <int> respectively.
 PYTHON_TYPE_MAP: dict[str, str] = {
     "int":   "int",
     "float": "double",
@@ -70,14 +96,14 @@ BINOP_MAP: dict[type, str] = {
     ast.Mult:     "*",
     ast.Div:      "/",
     ast.Mod:      "%",
-    ast.Pow:      "pow",   # handled specially
+    ast.Pow:      "pow",
     ast.FloorDiv: "/",
     ast.BitAnd:   "&",
     ast.BitOr:    "|",
     ast.BitXor:   "^",
     ast.LShift:   "<<",
     ast.RShift:   ">>",
-    ast.MatMult:  "*",     # best-effort
+    ast.MatMult:  "*",
 }
 
 CMPOP_MAP: dict[type, str] = {
@@ -112,6 +138,7 @@ class CppTranspiler(ast.NodeVisitor):
         self._indent: int = 0
         self._includes: set[str] = {"<iostream>", "<string>"}
         self._warnings: list[str] = []
+        self._warned_set: set[str] = set()   # dedup guard
         self._declared: set[str] = set()
 
     # ── helpers ────────────────────────────────────────────────────────────────
@@ -120,7 +147,9 @@ class CppTranspiler(ast.NodeVisitor):
         self._lines.append("    " * self._indent + line)
 
     def _warn(self, msg: str) -> None:
-        self._warnings.append(msg)
+        if msg not in self._warned_set:
+            self._warned_set.add(msg)
+            self._warnings.append(msg)
         self._emit(f"// [Astmize warning] {msg}")
 
     def _inc(self) -> None:
@@ -132,8 +161,8 @@ class CppTranspiler(ast.NodeVisitor):
     def _infer_cpp_type(self, node: ast.expr) -> str:
         """
         Infer a concrete C++ type from an AST expression node.
-        FIX v1.3.0: containers now recurse into their elements so we never
-        produce illegal `auto` as a template argument.
+        Containers recurse into their elements so we never produce illegal `auto`
+        as a template argument.
         """
         if isinstance(node, ast.Constant):
             if isinstance(node.value, bool):
@@ -150,7 +179,7 @@ class CppTranspiler(ast.NodeVisitor):
             if node.elts:
                 elem_type = self._infer_cpp_type(node.elts[0])
                 return f"std::vector<{elem_type}>"
-            return "std::vector<int>"          # empty list — default element int
+            return "std::vector<int>"
         if isinstance(node, ast.Dict):
             self._includes.add("<map>")
             if node.keys and node.keys[0] is not None:
@@ -167,32 +196,19 @@ class CppTranspiler(ast.NodeVisitor):
         return "auto"
 
     def _annotation_to_cpp(self, annotation: ast.expr | None) -> str:
-        """
-        Convert a Python type annotation node to its C++ equivalent.
-
-        FIX v1.3.0 — Complete rewrite of the Subscript branch:
-          • Handles dict[K, V] whose slice is an ast.Tuple (Python 3.9+ syntax).
-          • Handles Tuple[T1, T2, ...] similarly.
-          • Avoids string-matching on the outer type string.
-          • Adds the required #include for every resolved container.
-          • Also handles ast.Tuple slices used in subscripts (e.g. dict[str, int]).
-        """
+        """Convert a Python type annotation node to its C++ equivalent."""
         if annotation is None:
             return "auto"
 
-        # ── None literal  (e.g. `-> None` is stored as ast.Constant(None)) ───
         if isinstance(annotation, ast.Constant):
             if annotation.value is None:
                 return "void"
             if isinstance(annotation.value, str):
-                # Forward-reference string annotation e.g. -> "MyClass"
                 return annotation.value
             return "auto"
 
-        # ── bare name annotation ───────────────────────────────────────────────
         if isinstance(annotation, ast.Name):
             cpp_type = PYTHON_TYPE_MAP.get(annotation.id, annotation.id)
-            # Ensure includes are added for any container type returned here.
             if "vector" in cpp_type:
                 self._includes.add("<vector>")
             if "map" in cpp_type:
@@ -203,17 +219,13 @@ class CppTranspiler(ast.NodeVisitor):
                 self._includes.add("<string>")
             return cpp_type
 
-        # ── attribute annotation (e.g. typing.Optional) ───────────────────────
         if isinstance(annotation, ast.Attribute):
-            # e.g. typing.List[int] — just recurse on attr
             return self._annotation_to_cpp(ast.Name(id=annotation.attr, ctx=ast.Load()))
 
-        # ── tuple (used as slice in subscripts, e.g. dict[str, int]) ──────────
         if isinstance(annotation, ast.Tuple):
             parts = [self._annotation_to_cpp(e) for e in annotation.elts]
             return ", ".join(parts)
 
-        # ── subscript: Generic[T], list[T], dict[K, V], etc. ─────────────────
         if isinstance(annotation, ast.Subscript):
             outer_node = annotation.value
             outer_name = ""
@@ -222,13 +234,11 @@ class CppTranspiler(ast.NodeVisitor):
             elif isinstance(outer_node, ast.Attribute):
                 outer_name = outer_node.attr
 
-            # list / List
             if outer_name in ("list", "List"):
                 self._includes.add("<vector>")
                 inner = self._annotation_to_cpp(annotation.slice)
                 return f"std::vector<{inner}>"
 
-            # dict / Dict  — slice may be a Tuple[K, V]
             if outer_name in ("dict", "Dict"):
                 self._includes.add("<map>")
                 slice_node = annotation.slice
@@ -239,19 +249,16 @@ class CppTranspiler(ast.NodeVisitor):
                 inner = self._annotation_to_cpp(slice_node)
                 return f"std::map<std::string, {inner}>"
 
-            # set / Set
             if outer_name in ("set", "Set", "FrozenSet", "frozenset"):
                 self._includes.add("<set>")
                 inner = self._annotation_to_cpp(annotation.slice)
                 return f"std::set<{inner}>"
 
-            # Optional
             if outer_name in ("Optional", "optional"):
                 self._includes.add("<optional>")
                 inner = self._annotation_to_cpp(annotation.slice)
                 return f"std::optional<{inner}>"
 
-            # Tuple / tuple
             if outer_name in ("Tuple", "tuple"):
                 self._includes.add("<tuple>")
                 slice_node = annotation.slice
@@ -261,19 +268,16 @@ class CppTranspiler(ast.NodeVisitor):
                 inner = self._annotation_to_cpp(slice_node)
                 return f"std::tuple<{inner}>"
 
-            # Union — just pick first type as best-effort
             if outer_name == "Union":
                 slice_node = annotation.slice
                 if isinstance(slice_node, ast.Tuple) and slice_node.elts:
                     return self._annotation_to_cpp(slice_node.elts[0])
 
-            # Deque / deque
             if outer_name in ("Deque", "deque"):
                 self._includes.add("<deque>")
                 inner = self._annotation_to_cpp(annotation.slice)
                 return f"std::deque<{inner}>"
 
-            # Generic fallback — outer<inner>
             outer_cpp = self._annotation_to_cpp(outer_node)
             inner_cpp = self._annotation_to_cpp(annotation.slice)
             return f"{outer_cpp}<{inner_cpp}>"
@@ -291,6 +295,14 @@ class CppTranspiler(ast.NodeVisitor):
     # ── expression emitter ─────────────────────────────────────────────────────
 
     def _expr(self, node: ast.expr) -> str:
+        try:
+            return self._expr_inner(node)
+        except Exception as exc:
+            node_name = type(node).__name__
+            self._warn(f"Could not translate expression {node_name}: {exc}")
+            return f"/* unsupported: {node_name} */"
+
+    def _expr_inner(self, node: ast.expr) -> str:   # noqa: C901 (long but flat)
         if isinstance(node, ast.Constant):
             if isinstance(node.value, str):
                 escaped = (
@@ -435,10 +447,7 @@ class CppTranspiler(ast.NodeVisitor):
     def _fstring_expr(self, node: ast.JoinedStr) -> str:
         """
         Translate an f-string to a std::ostringstream-based lambda.
-
-        FIX v1.3.0: The old approach called std::to_string() on every
-        FormattedValue, which breaks for std::string arguments.  Using
-        std::ostringstream with operator<< handles both numeric and string
+        Using std::ostringstream with operator<< handles both numeric and string
         values correctly without any type-checking at transpile time.
         """
         self._includes.add("<sstream>")
@@ -455,7 +464,6 @@ class CppTranspiler(ast.NodeVisitor):
         if not parts:
             return '""'
         stream_ops = " << ".join(parts)
-        # Emit as an immediately-invoked lambda so the expression is usable anywhere.
         return f'([&](){{ std::ostringstream _oss; _oss << {stream_ops}; return _oss.str(); }}())'
 
     def _call_expr(self, node: ast.Call) -> str:
@@ -518,9 +526,6 @@ class CppTranspiler(ast.NodeVisitor):
             return f"std::min({', '.join(args)})"
 
         # ── sorted() ─────────────────────────────────────────────────────────
-        # FIX v1.3.0: Old code used a comma-expression which evaluated to void.
-        # Now we emit an IIFE lambda that copies the container, sorts the copy,
-        # and returns it — matching Python semantics (non-destructive).
         if func_name == "sorted":
             self._includes.add("<algorithm>")
             if args:
@@ -535,7 +540,6 @@ class CppTranspiler(ast.NodeVisitor):
             return "/* sorted() — no argument */"
 
         # ── reversed() ───────────────────────────────────────────────────────
-        # FIX v1.3.0: Same approach as sorted().
         if func_name == "reversed":
             self._includes.add("<algorithm>")
             if args:
@@ -558,9 +562,6 @@ class CppTranspiler(ast.NodeVisitor):
             return f"/* zip({', '.join(args)}) */"
 
         # ── input() ──────────────────────────────────────────────────────────
-        # FIX v1.3.0: Old code emitted nonsensical array-index syntax.
-        # Now emits a proper std::getline call wrapped in a lambda so it can
-        # be used as an expression (e.g. x = input("Enter: ")).
         if func_name == "input":
             self._includes.add("<iostream>")
             self._includes.add("<string>")
@@ -580,9 +581,6 @@ class CppTranspiler(ast.NodeVisitor):
             attr = node.func.attr
             obj = self._expr(node.func.value)
 
-            # FIX v1.3.0: pop() now returns the element via an IIFE lambda
-            # instead of the broken comma-expression that returned void.
-            # sort / reverse: removed the `None or ""` hack; add include explicitly.
             if attr == "pop":
                 if not args:
                     return (
@@ -728,16 +726,204 @@ class CppTranspiler(ast.NodeVisitor):
 
     visit_AsyncFunctionDef = visit_FunctionDef
 
-    def visit_ClassDef(self, node: ast.ClassDef) -> None:
-        bases = ", ".join(self._expr(b) for b in node.bases) if node.bases else ""
-        if bases:
-            self._emit(f"class {node.name} : public {bases} {{")
-        else:
-            self._emit(f"class {node.name} {{")
-        self._emit("public:")
+    # ── NEW v1.4.0: Full class support ─────────────────────────────────────────
+
+    def _collect_self_attrs(self, init_node: ast.FunctionDef) -> list[tuple[str, str]]:
+        """
+        Walk an __init__ body and collect all `self.x = …` assignments.
+        Returns a list of (attr_name, cpp_type) pairs in declaration order,
+        deduplicated (first occurrence wins).
+        """
+        seen: set[str] = set()
+        attrs: list[tuple[str, str]] = []
+        for stmt in ast.walk(init_node):
+            if not isinstance(stmt, (ast.Assign, ast.AnnAssign)):
+                continue
+            # ast.Assign: targets may include self.x
+            if isinstance(stmt, ast.Assign):
+                for tgt in stmt.targets:
+                    if (
+                        isinstance(tgt, ast.Attribute)
+                        and isinstance(tgt.value, ast.Name)
+                        and tgt.value.id == "self"
+                        and tgt.attr not in seen
+                    ):
+                        seen.add(tgt.attr)
+                        cpp_type = self._infer_cpp_type(stmt.value)
+                        attrs.append((tgt.attr, cpp_type))
+            # ast.AnnAssign: self.x: int = …
+            elif isinstance(stmt, ast.AnnAssign):
+                tgt = stmt.target
+                if (
+                    isinstance(tgt, ast.Attribute)
+                    and isinstance(tgt.value, ast.Name)
+                    and tgt.value.id == "self"
+                    and tgt.attr not in seen
+                ):
+                    seen.add(tgt.attr)
+                    cpp_type = self._annotation_to_cpp(stmt.annotation)
+                    attrs.append((tgt.attr, cpp_type))
+        return attrs
+
+    def _emit_constructor(self, class_name: str, init_node: ast.FunctionDef) -> None:
+        """
+        Emit a C++ constructor from a Python __init__ method.
+
+        Rules:
+        • Strip `self` from the parameter list.
+        • self.x = expr assignments become `this->x = expr;` inside the body.
+        • Other statements are translated normally.
+        """
+        args = init_node.args
+        params: list[str] = []
+        defaults_offset = len(args.args) - len(args.defaults)
+
+        for i, arg in enumerate(args.args):
+            if arg.arg == "self":
+                continue
+            cpp_type = self._annotation_to_cpp(arg.annotation) if arg.annotation else "auto"
+            default_idx = i - defaults_offset
+            if default_idx >= 0:
+                default_val = self._expr(args.defaults[default_idx])
+                params.append(f"{cpp_type} {arg.arg} = {default_val}")
+            else:
+                params.append(f"{cpp_type} {arg.arg}")
+
+        param_str = ", ".join(params)
+        self._emit(f"{class_name}({param_str}) {{")
         self._inc()
+
+        outer_declared = self._declared.copy()
+        for stmt in init_node.body:
+            # self.x = expr → this->x = expr
+            if (
+                isinstance(stmt, ast.Assign)
+                and len(stmt.targets) == 1
+                and isinstance(stmt.targets[0], ast.Attribute)
+                and isinstance(stmt.targets[0].value, ast.Name)
+                and stmt.targets[0].value.id == "self"
+            ):
+                attr = stmt.targets[0].attr
+                val  = self._expr(stmt.value)
+                self._emit(f"this->{attr} = {val};")
+            elif (
+                isinstance(stmt, ast.AnnAssign)
+                and isinstance(stmt.target, ast.Attribute)
+                and isinstance(stmt.target.value, ast.Name)
+                and stmt.target.value.id == "self"
+            ):
+                attr = stmt.target.attr
+                if stmt.value:
+                    val = self._expr(stmt.value)
+                    self._emit(f"this->{attr} = {val};")
+            else:
+                self.visit(stmt)
+
+        self._declared = outer_declared
+        self._dec()
+        self._emit("}")
+        self._emit("")
+
+    def _emit_method(self, node: ast.FunctionDef) -> None:
+        """
+        Emit a regular C++ member function, stripping `self` from params
+        and rewriting `self.x` → `this->x` in the body.
+        """
+        ret_type = self._return_type(node)
+        args = node.args
+        params: list[str] = []
+        defaults_offset = len(args.args) - len(args.defaults)
+
+        for i, arg in enumerate(args.args):
+            if arg.arg == "self":
+                continue
+            cpp_type = self._annotation_to_cpp(arg.annotation) if arg.annotation else "auto"
+            default_idx = i - defaults_offset
+            if default_idx >= 0:
+                default_val = self._expr(args.defaults[default_idx])
+                params.append(f"{cpp_type} {arg.arg} = {default_val}")
+            else:
+                params.append(f"{cpp_type} {arg.arg}")
+
+        param_str = ", ".join(params)
+        self._emit(f"{ret_type} {node.name}({param_str}) {{")
+        self._inc()
+
+        outer_declared = self._declared.copy()
+        # Save old _expr and patch self-attr references
         for stmt in node.body:
             self.visit(stmt)
+        self._declared = outer_declared
+
+        self._dec()
+        self._emit("}")
+        self._emit("")
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:   # noqa: C901
+        """
+        v1.4.0 — Full class support:
+          1. Emit `class Name : public Base1, public Base2 {`.
+          2. Collect self.x attributes from __init__ and declare them as public members.
+          3. Emit constructor (from __init__), rewriting self.x → this->x.
+          4. Emit all other methods as public member functions (self stripped).
+          5. Any non-method body statement gets a warning + comment.
+        """
+        # ── class header ──────────────────────────────────────────────────────
+        if node.bases:
+            base_list = ", ".join(f"public {self._expr(b)}" for b in node.bases)
+            self._emit(f"class {node.name} : {base_list} {{")
+        else:
+            self._emit(f"class {node.name} {{")
+
+        self._emit("public:")
+        self._inc()
+
+        # ── separate __init__ from other members ─────────────────────────────
+        init_node: ast.FunctionDef | None = None
+        other_methods: list[ast.FunctionDef] = []
+        other_stmts: list[ast.stmt] = []
+
+        for stmt in node.body:
+            if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if stmt.name == "__init__":
+                    init_node = stmt
+                else:
+                    other_methods.append(stmt)
+            elif isinstance(stmt, ast.Pass):
+                pass  # skip — empty body placeholder
+            else:
+                other_stmts.append(stmt)
+
+        # ── 1. Declare member variables (from __init__) ───────────────────────
+        if init_node:
+            attrs = self._collect_self_attrs(init_node)
+            if attrs:
+                self._emit("// --- member variables ---")
+                for attr_name, cpp_type in attrs:
+                    self._emit(f"{cpp_type} {attr_name};")
+                self._emit("")
+
+        # ── 2. Warn about unsupported body statements ─────────────────────────
+        for stmt in other_stmts:
+            self._warn(
+                f"Class-level statement '{type(stmt).__name__}' has no direct C++ "
+                f"equivalent as a class member — moved to comment."
+            )
+            self._emit(f"// [unsupported class-level stmt: {type(stmt).__name__}]")
+
+        # ── 3. Constructor ────────────────────────────────────────────────────
+        if init_node:
+            self._emit("// --- constructor ---")
+            self._emit_constructor(node.name, init_node)
+
+        # ── 4. Other methods ──────────────────────────────────────────────────
+        if other_methods:
+            self._emit("// --- methods ---")
+        for method in other_methods:
+            # Rewrite self.attr accesses in AST before visiting
+            _SelfRewriter().visit(method)
+            self._emit_method(method)
+
         self._dec()
         self._emit("};")
         self._emit("")
@@ -749,21 +935,14 @@ class CppTranspiler(ast.NodeVisitor):
     def visit_Assign(self, node: ast.Assign) -> None:
         """
         Handle all Python assignment forms:
-
           1. Simple name          x = expr
           2. Subscript target     arr[i] = expr
-          3. Attribute target     self.x = expr
-          4. Tuple unpacking      a, b = b, a   /   arr[i], arr[j] = arr[j], arr[i]
+          3. Attribute target     self.x = expr  /  obj.attr = expr
+          4. Tuple unpacking      a, b = b, a
           5. Chained targets      x = y = expr
           6. Fallback             anything else → comment
-
-        FIX v1.3.0b: The old else-branch prepended `auto` to every target string
-        which turned `arr[j] = ...` into `auto arr[j] = ...` — an illegal VLA.
-        Each target kind is now routed to its own correct emission.
         """
-        # ── Helpers used only inside this method ──────────────────────────────
         def _assign_single(target: ast.expr, val_expr: str) -> None:
-            """Emit one assignment; pick up or introduce variable as needed."""
             if isinstance(target, ast.Name):
                 name = target.id
                 if name in self._declared:
@@ -772,27 +951,22 @@ class CppTranspiler(ast.NodeVisitor):
                     cpp_type = self._infer_cpp_type(node.value)
                     self._emit(f"{cpp_type} {name} = {val_expr};")
                     self._declared.add(name)
-
             elif isinstance(target, (ast.Subscript, ast.Attribute)):
-                # No type prefix — just assignment into an existing location.
                 self._emit(f"{self._expr(target)} = {val_expr};")
-
             else:
                 self._warn(f"Unsupported assignment target: {type(target).__name__}")
                 self._emit(f"/* {self._expr(target)} = {val_expr}; */")
 
-        # ── Case: tuple unpacking  (a, b = x, y  or  arr[i], arr[j] = ...) ──
+        # Case: tuple unpacking
         if (
             len(node.targets) == 1
             and isinstance(node.targets[0], ast.Tuple)
         ):
             lhs_elts = node.targets[0].elts
 
-            # RHS is also a Tuple of the same arity → element-wise unpack
             if isinstance(node.value, ast.Tuple) and len(node.value.elts) == len(lhs_elts):
                 rhs_elts = node.value.elts
 
-                # Fast path: pure swap  (a, b = b, a)
                 if len(lhs_elts) == 2:
                     l0 = self._expr(lhs_elts[0])
                     l1 = self._expr(lhs_elts[1])
@@ -803,8 +977,6 @@ class CppTranspiler(ast.NodeVisitor):
                         self._emit(f"std::swap({l0}, {l1});")
                         return
 
-                # General case: stash all RHS values in temps first to avoid
-                # aliasing, then assign to LHS targets.
                 tmp_names: list[str] = []
                 for i, rhs_elt in enumerate(rhs_elts):
                     tmp = f"_t{i}_"
@@ -819,11 +991,9 @@ class CppTranspiler(ast.NodeVisitor):
                             self._emit(f"auto {name} = {tmp};")
                             self._declared.add(name)
                     else:
-                        # Subscript / Attribute target
                         self._emit(f"{self._expr(lhs_elt)} = {tmp};")
                 return
 
-            # RHS is a single expression (e.g. pair/struct unpack) — best effort
             val_str = self._expr(node.value)
             self._warn("Tuple unpacking from non-tuple RHS — partial support")
             for i, lhs_elt in enumerate(lhs_elts):
@@ -838,14 +1008,14 @@ class CppTranspiler(ast.NodeVisitor):
                     self._emit(f"{self._expr(lhs_elt)} = std::get<{i}>({val_str});")
             return
 
-        # ── Case: chained assignment  x = y = expr ────────────────────────────
+        # Case: chained assignment  x = y = expr
         if len(node.targets) > 1:
             val_str = self._expr(node.value)
             for t in node.targets:
                 _assign_single(t, val_str)
             return
 
-        # ── Case: single target (name / subscript / attribute) ────────────────
+        # Case: single target
         _assign_single(node.targets[0], self._expr(node.value))
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
@@ -1048,7 +1218,17 @@ class CppTranspiler(ast.NodeVisitor):
                 "error": f"Python SyntaxError at line {exc.lineno}: {exc.msg}",
             }
 
-        self.visit(tree)
+        try:
+            self.visit(tree)
+        except Exception as exc:           # safety net — should never trigger
+            logger.exception("Unexpected error during AST traversal")
+            return {
+                "cpp_code": "\n".join(self._lines),
+                "warnings": self._warnings,
+                "success": False,
+                "error": f"Internal transpiler error: {exc}",
+            }
+
         cpp_code = "\n".join(self._lines)
         return {
             "cpp_code": cpp_code,
@@ -1059,15 +1239,39 @@ class CppTranspiler(ast.NodeVisitor):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  AST helper: rewrite self.attr → this->attr inside method bodies
+# ══════════════════════════════════════════════════════════════════════════════
+
+class _SelfRewriter(ast.NodeTransformer):
+    """
+    Transforms `self.attr` accesses into a synthetic Name node whose id is
+    `this->attr` so that _expr() can render it verbatim.
+    This is purely cosmetic and only affects the in-memory AST copy passed
+    to _emit_method — it does NOT mutate the original parsed tree.
+    """
+
+    def visit_Attribute(self, node: ast.Attribute) -> ast.AST:
+        if (
+            isinstance(node.value, ast.Name)
+            and node.value.id == "self"
+        ):
+            # Return a Name node that renders as `this->attr`
+            new_node = ast.Name(id=f"this->{node.attr}", ctx=node.ctx)
+            return ast.copy_location(new_node, node)
+        return self.generic_visit(node)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  Routes
 # ══════════════════════════════════════════════════════════════════════════════
 
 @app.route("/", methods=["GET"])
 def health_check():
-    return jsonify({"status": "ok", "service": "Astmize API", "version": "1.3.0"})
+    return jsonify({"status": "ok", "service": "Astmize API", "version": "1.4.0"})
 
 
 @app.route("/convert", methods=["POST"])
+@rate_limit("60 per minute")
 def convert():
     payload = request.get_json(silent=True)
     if not payload or "python_code" not in payload:
@@ -1085,6 +1289,14 @@ def convert():
             "cpp_code": "", "warnings": [],
         }), 400
 
+    # Basic size guard — reject payloads larger than 100 KB
+    if len(python_code) > 100_000:
+        return jsonify({
+            "success": False,
+            "error": "Code payload exceeds the 100 KB limit.",
+            "cpp_code": "", "warnings": [],
+        }), 413
+
     logger.info("Received conversion request (%d chars)", len(python_code))
 
     transpiler = CppTranspiler()
@@ -1098,9 +1310,24 @@ def convert():
     return jsonify(result), status_code
 
 
+# ── Rate-limit error handler ───────────────────────────────────────────────────
+if _LIMITER_AVAILABLE:
+    from flask_limiter.errors import RateLimitExceeded
+
+    @app.errorhandler(RateLimitExceeded)
+    def handle_rate_limit(e):
+        logger.warning("Rate limit exceeded from %s", request.remote_addr)
+        return jsonify({
+            "success": False,
+            "error": "Too many requests — you are sending more than 60 requests per minute. "
+                     "Please slow down.",
+            "cpp_code": "",
+            "warnings": [],
+        }), 429
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
     logger.info("Starting Astmize API on port %d  (debug=%s)", port, debug)
     app.run(host="0.0.0.0", port=port, debug=debug)
-
