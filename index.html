@@ -125,10 +125,10 @@
     .editor-titlebar {
       display:flex; align-items:center; justify-content:space-between; padding:10px 16px;
       background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); gap:8px; flex-wrap:wrap;
-      min-height:44px;
+      overflow:visible;
     }
-    .titlebar-left { display:flex; align-items:center; gap:8px; flex-shrink:0; }
-    .window-dots { display:flex; gap:5px; }
+    .titlebar-left { display:flex; align-items:center; gap:8px; flex-shrink:0; min-width:0; }
+    .window-dots { display:flex; gap:5px; flex-shrink:0; }
     .window-dot { width:10px; height:10px; border-radius:50%; }
     .dot-red{background:#ff5f57} .dot-yellow{background:#febc2e} .dot-green{background:#28c840}
     .titlebar-filename { font-family:var(--font-code); font-size:.72rem; color:var(--text-secondary); }
@@ -157,8 +157,10 @@
     #python-input::selection { background:rgba(0,229,255,.15); }
     .output-display {
       flex:1; padding:16px; font-family:var(--font-code); font-size:.82rem; line-height:1.7;
-      color:var(--text-code); overflow:auto; white-space:pre-wrap; word-break:break-all; overflow-wrap:anywhere; min-height:360px; position:relative;
+      color:var(--text-code); overflow:auto; white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere;
+      min-height:360px; position:relative; max-width:100%;
     }
+    .output-display code { display:block; max-width:100%; }
     .output-placeholder {
       position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
       gap:14px; color:var(--text-muted); pointer-events:none;
@@ -433,13 +435,14 @@
       .header-right { gap:8px; }
       .editor-body,.output-display { min-height:200px; }
       .titlebar-actions { gap:4px; }
-      .action-btn { padding:4px 8px; font-size:.6rem; }
+      .action-btn { padding:5px 10px; font-size:.65rem; }
       .panels { gap:12px; }
       .status-bar { flex-wrap:wrap; }
       .status-meta { margin-left:0; width:100%; }
-      /* Output titlebar: stack buttons below filename on very small screens */
-      #output-card .editor-titlebar { flex-direction:column; align-items:flex-start; }
-      #output-card .titlebar-actions { width:100%; justify-content:flex-start; }
+      /* Output card: stack buttons under filename so they're always reachable */
+      .output-card .editor-titlebar { flex-direction:column; align-items:flex-start; padding:8px 12px; gap:6px; }
+      .output-card .titlebar-actions { width:100%; justify-content:flex-start; }
+      .output-card .titlebar-left { width:100%; }
     }
     @media (max-width:380px) {
       .badge-version { display:none; }
@@ -1089,36 +1092,37 @@ const CPP_TYPES = new Set([
   'unique_ptr','shared_ptr','optional','variant'
 ]);
 
-function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
 
 function highlight(code) {
-  // Tokenizer: split code into segments that should be highlighted differently.
-  // Order matters: comments > strings > includes > numbers > identifiers/keywords > rest
-  const TOKEN_RE = /(\/\/[^\n]*)|(\"(?:\\.|[^\"\\])*\")|(#include\s*[<"][^>"]*[>"])|(\b\d+\.?\d*[fFuUlL]*\b)|([A-Za-z_]\w*\s*(?=\())|([A-Za-z_]\w*)|([^A-Za-z_\d"#\/\n]+|.)/g;
-
-  let result = '';
-  let match;
-  while ((match = TOKEN_RE.exec(code)) !== null) {
-    const [full, cmt, str, inc, num, fnCall, ident, other] = match;
-    if (cmt)    { result += `<span class="tok-cmt">${esc(cmt)}</span>`; }
-    else if (str)    { result += `<span class="tok-str">${esc(str)}</span>`; }
-    else if (inc)    { result += `<span class="tok-inc">${esc(inc)}</span>`; }
-    else if (num)    { result += `<span class="tok-num">${esc(num)}</span>`; }
-    else if (fnCall) {
-      const name = fnCall.trimEnd().replace(/\s*\($/, '');
-      const trailing = fnCall.slice(name.length);
-      if (CPP_KEYWORDS.has(name))     result += `<span class="tok-kw">${esc(name)}</span>${esc(trailing)}`;
-      else if (CPP_TYPES.has(name))   result += `<span class="tok-type">${esc(name)}</span>${esc(trailing)}`;
-      else                             result += `<span class="tok-fn">${esc(name)}</span>${esc(trailing)}`;
+  // Single-pass tokenizer — never applies regex to already-HTML-tagged text
+  const TOKEN = /(\/\/[^\n]*)|(#include\s*[<"][^>"]*[>"])|(\"(?:\\.|[^\"\\])*\")|(\b\d+\.?\d*[fFuUlL]*\b)|([A-Za-z_]\w*)|(\s+)|(.)/g;
+  let out = '';
+  let m;
+  while ((m = TOKEN.exec(code)) !== null) {
+    const [, cmt, inc, str, num, word, space, other] = m;
+    if (cmt)   { out += `<span class="tok-cmt">${_esc(cmt)}</span>`; }
+    else if (inc)   { out += `<span class="tok-inc">${_esc(inc)}</span>`; }
+    else if (str)   { out += `<span class="tok-str">${_esc(str)}</span>`; }
+    else if (num)   { out += `<span class="tok-num">${_esc(num)}</span>`; }
+    else if (word)  {
+      // peek if followed by '(' for function coloring
+      const after = code[TOKEN.lastIndex];
+      if (CPP_KEYWORDS.has(word))        out += `<span class="tok-kw">${_esc(word)}</span>`;
+      else if (CPP_TYPES.has(word))      out += `<span class="tok-type">${_esc(word)}</span>`;
+      else if (after === '(')            out += `<span class="tok-fn">${_esc(word)}</span>`;
+      else                               out += _esc(word);
     }
-    else if (ident)  {
-      if (CPP_KEYWORDS.has(ident))    result += `<span class="tok-kw">${esc(ident)}</span>`;
-      else if (CPP_TYPES.has(ident))  result += `<span class="tok-type">${esc(ident)}</span>`;
-      else                             result += esc(ident);
-    }
-    else { result += esc(full); }
+    else if (space) { out += space; }   // preserve whitespace/newlines as-is (safe)
+    else            { out += _esc(other); }
   }
-  return result;
+  return out;
 }
 
 // ─── Render output ────────────────────────────────────────────────────────────
