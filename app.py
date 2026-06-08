@@ -40,6 +40,7 @@ Changes in v1.4.0:
 import ast
 import os
 import logging
+import requests as http_requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
@@ -1482,6 +1483,135 @@ def convert():
         len(result["warnings"]),
     )
     return jsonify(result), status_code
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  /enhance  — AI-powered C++ improvement via Gemini (OpenRouter)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.route("/enhance", methods=["POST"])
+@rate_limit("20 per minute")
+def enhance():
+    """
+    Accepts transpiled C++ code and returns an AI-improved version via Gemini.
+
+    Request body (JSON):
+        { "cpp_code": "..." }
+
+    Response (JSON):
+        {
+            "success": true,
+            "enhanced_code": "...",
+            "explanation": "...",
+            "error": null
+        }
+    """
+    if not GEMINI_API_KEY:
+        return jsonify({
+            "success": False,
+            "enhanced_code": "",
+            "explanation": "",
+            "error": "GEMINI_API_KEY is not configured. Add it in your Render environment variables.",
+        }), 503
+
+    payload = request.get_json(silent=True)
+    if not payload or "cpp_code" not in payload:
+        return jsonify({
+            "success": False,
+            "enhanced_code": "",
+            "explanation": "",
+            "error": "Request body must be JSON with a 'cpp_code' key.",
+        }), 400
+
+    cpp_code: str = payload["cpp_code"].strip()
+    if not cpp_code:
+        return jsonify({
+            "success": False,
+            "enhanced_code": "",
+            "explanation": "",
+            "error": "The 'cpp_code' field is empty.",
+        }), 400
+
+    if len(cpp_code) > 50_000:
+        return jsonify({
+            "success": False,
+            "enhanced_code": "",
+            "explanation": "",
+            "error": "Code payload exceeds the 50 KB limit.",
+        }), 413
+
+    prompt = f"""You are an expert C++ developer. The following C++ code was automatically transpiled from Python.
+Your job is to improve it: fix any issues, use idiomatic modern C++17, improve variable names if needed, and remove redundant comments.
+
+Return ONLY a JSON object in this exact format (no markdown, no backticks):
+{{
+  "enhanced_code": "<the full improved C++ code here>",
+  "explanation": "<a short explanation in 2-3 sentences of what you improved>"
+}}
+
+C++ code to improve:
+{cpp_code}"""
+
+    logger.info("Sending enhance request to OpenRouter (%d chars)", len(cpp_code))
+
+    try:
+        response = http_requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {GEMINI_API_KEY}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://astmize.onrender.com",
+                "X-Title": "Astmize",
+            },
+            json={
+                "model": "google/gemini-2.0-flash-exp:free",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.2,
+            },
+            timeout=30,
+        )
+        response.raise_for_status()
+    except http_requests.exceptions.Timeout:
+        logger.error("OpenRouter request timed out")
+        return jsonify({
+            "success": False,
+            "enhanced_code": "",
+            "explanation": "",
+            "error": "AI service timed out. Please try again.",
+        }), 504
+    except http_requests.exceptions.RequestException as exc:
+        logger.error("OpenRouter request failed: %s", exc)
+        return jsonify({
+            "success": False,
+            "enhanced_code": "",
+            "explanation": "",
+            "error": f"AI service unavailable: {exc}",
+        }), 502
+
+    try:
+        raw_text = response.json()["choices"][0]["message"]["content"]
+        # Strip markdown fences if model adds them
+        clean = raw_text.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
+        import json
+        parsed = json.loads(clean)
+        enhanced_code  = parsed.get("enhanced_code", "")
+        explanation    = parsed.get("explanation", "")
+    except Exception as exc:
+        logger.error("Failed to parse Gemini response: %s", exc)
+        return jsonify({
+            "success": False,
+            "enhanced_code": "",
+            "explanation": "",
+            "error": "Failed to parse AI response. Please try again.",
+        }), 500
+
+    logger.info("Enhancement successful (%d chars output)", len(enhanced_code))
+    return jsonify({
+        "success": True,
+        "enhanced_code": enhanced_code,
+        "explanation": explanation,
+        "error": None,
+    }), 200
 
 
 # ── Rate-limit error handler ───────────────────────────────────────────────────
