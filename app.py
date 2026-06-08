@@ -1458,10 +1458,17 @@ Python code to convert:
 
     # ── Model fallback chain ────────────────────────────────────────────────────
     # Try each free model in order; skip to the next on 429 (rate-limit).
+    # Each model has its own independent 200 req/day quota on OpenRouter.
+    # Ordered best-to-worst for code generation quality.
     MODELS = [
-        "qwen/qwen3-coder:free",
-        "deepseek/deepseek-chat-v3-0324:free",
-        "meta-llama/llama-3.3-70b-instruct:free",
+        "qwen/qwen3-coder:free",                       # best coder, 1M ctx
+        "deepseek/deepseek-chat-v3-0324:free",         # strong coder, 131K ctx
+        "nvidia/nemotron-3-super-120b-a12b:free",      # 120B, 1M ctx
+        "openai/gpt-oss-120b:free",                    # 120B OpenAI OSS
+        "openai/gpt-oss-20b:free",                     # lighter OpenAI OSS
+        "google/gemma-4-31b-it:free",                  # Google, 262K ctx
+        "meta-llama/llama-3.3-70b-instruct:free",      # Meta, reliable fallback
+        "nousresearch/hermes-3-llama-3.1-405b:free",   # 405B last resort
     ]
 
     response = None
