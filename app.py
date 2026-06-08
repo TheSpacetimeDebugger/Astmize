@@ -62,7 +62,16 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-API_KEY: str | None = os.getenv("API_KEY")
+# ── API Keys ───────────────────────────────────────────────────────────────────
+# Set these as Environment Variables in Render — never hardcode them here.
+API_KEY: str | None        = os.getenv("API_KEY")         # general auth key (optional)
+GEMINI_API_KEY: str | None = os.getenv("GEMINI_API_KEY")  # Google Gemini API key
+
+if not GEMINI_API_KEY:
+    logger.warning(
+        "GEMINI_API_KEY is not set. "
+        "Add it as an Environment Variable in your Render dashboard."
+    )
 
 # ── Rate limiter ───────────────────────────────────────────────────────────────
 if _LIMITER_AVAILABLE:
