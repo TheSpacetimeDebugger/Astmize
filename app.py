@@ -1456,47 +1456,74 @@ Rules:
 Python code to convert:
 {python_code}"""
 
-    try:
-        response = http_requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {GEMINI_API_KEY}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://astmize.onrender.com",
-                "X-Title": "Astmize",
-            },
-            json={
-                "model": "qwen/qwen3-coder:free",
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.1,
-            },
-            timeout=60,
-        )
-        response.raise_for_status()
-    except http_requests.exceptions.Timeout:
-        logger.error("OpenRouter /convert request timed out")
+    # ── Model fallback chain ────────────────────────────────────────────────────
+    # Try each free model in order; skip to the next on 429 (rate-limit).
+    MODELS = [
+        "qwen/qwen3-coder:free",
+        "deepseek/deepseek-chat-v3-0324:free",
+        "meta-llama/llama-3.3-70b-instruct:free",
+    ]
+
+    response = None
+    last_error: str = ""
+
+    for model in MODELS:
+        try:
+            logger.info("Trying model: %s", model)
+            resp = http_requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {GEMINI_API_KEY}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://astmize.onrender.com",
+                    "X-Title": "Astmize",
+                },
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.1,
+                },
+                timeout=60,
+            )
+
+            if resp.status_code == 429:
+                logger.warning("Model %s returned 429 — trying next model", model)
+                last_error = f"Model {model} rate-limited (429)"
+                continue  # try next model
+
+            resp.raise_for_status()
+            response = resp
+            logger.info("Model %s accepted the request", model)
+            break  # success
+
+        except http_requests.exceptions.Timeout:
+            logger.error("Model %s timed out — trying next", model)
+            last_error = f"Model {model} timed out"
+            continue
+        except http_requests.exceptions.RequestException as exc:
+            logger.error("Model %s request error: %s", model, exc)
+            last_error = str(exc)
+            break  # non-429 network error
+
+    if response is None:
         return jsonify({
             "success": False,
             "cpp_code": "",
             "warnings": [],
-            "error": "AI service timed out. Please try again.",
-        }), 504
-    except http_requests.exceptions.RequestException as exc:
-        logger.error("OpenRouter /convert request failed: %s", exc)
-        return jsonify({
-            "success": False,
-            "cpp_code": "",
-            "warnings": [],
-            "error": f"AI service unavailable: {exc}",
+            "error": (
+                "All AI models are currently rate-limited or unavailable. "
+                "Please wait a moment and try again. "
+                f"(Last error: {last_error})"
+            ),
         }), 502
 
     try:
         raw_text = response.json()["choices"][0]["message"]["content"]
 
-        # Strip <think>...</think> blocks emitted by reasoning models (e.g. Qwen3)
+        # Strip <think>...</think> blocks emitted by reasoning models
         clean = re.sub(r"<think>.*?</think>", "", raw_text, flags=re.DOTALL).strip()
 
-        # Strip any residual markdown fences (```json ... ``` or ``` ... ```)
+        # Strip any residual markdown fences
         clean = re.sub(r"^```(?:json)?\s*", "", clean, flags=re.IGNORECASE)
         clean = re.sub(r"\s*```$", "", clean).strip()
 
@@ -1504,7 +1531,6 @@ Python code to convert:
         cpp_code = parsed.get("cpp_code", "").strip()
         warnings = parsed.get("warnings", [])
 
-        # Ensure warnings is always a list of strings
         if not isinstance(warnings, list):
             warnings = [str(warnings)] if warnings else []
         else:
