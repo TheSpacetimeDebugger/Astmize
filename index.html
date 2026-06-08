@@ -125,13 +125,14 @@
     .editor-titlebar {
       display:flex; align-items:center; justify-content:space-between; padding:10px 16px;
       background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); gap:8px; flex-wrap:wrap;
+      min-height:44px;
     }
-    .titlebar-left { display:flex; align-items:center; gap:8px; }
+    .titlebar-left { display:flex; align-items:center; gap:8px; flex-shrink:0; }
     .window-dots { display:flex; gap:5px; }
     .window-dot { width:10px; height:10px; border-radius:50%; }
     .dot-red{background:#ff5f57} .dot-yellow{background:#febc2e} .dot-green{background:#28c840}
     .titlebar-filename { font-family:var(--font-code); font-size:.72rem; color:var(--text-secondary); }
-    .titlebar-actions { display:flex; gap:6px; flex-wrap:wrap; }
+    .titlebar-actions { display:flex; gap:6px; flex-wrap:wrap; flex-shrink:0; }
     .action-btn {
       display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:var(--radius-sm);
       font-family:var(--font-code); font-size:.62rem; font-weight:500; letter-spacing:.06em;
@@ -156,7 +157,7 @@
     #python-input::selection { background:rgba(0,229,255,.15); }
     .output-display {
       flex:1; padding:16px; font-family:var(--font-code); font-size:.82rem; line-height:1.7;
-      color:var(--text-code); overflow:auto; white-space:pre; overflow-wrap:normal; min-height:360px; position:relative;
+      color:var(--text-code); overflow:auto; white-space:pre-wrap; word-break:break-all; overflow-wrap:anywhere; min-height:360px; position:relative;
     }
     .output-placeholder {
       position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -436,6 +437,9 @@
       .panels { gap:12px; }
       .status-bar { flex-wrap:wrap; }
       .status-meta { margin-left:0; width:100%; }
+      /* Output titlebar: stack buttons below filename on very small screens */
+      #output-card .editor-titlebar { flex-direction:column; align-items:flex-start; }
+      #output-card .titlebar-actions { width:100%; justify-content:flex-start; }
     }
     @media (max-width:380px) {
       .badge-version { display:none; }
