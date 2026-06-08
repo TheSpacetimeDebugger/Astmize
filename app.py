@@ -39,6 +39,8 @@ Changes in v1.4.0:
 
 import ast
 import os
+import re
+import json
 import logging
 import requests as http_requests
 from flask import Flask, request, jsonify
@@ -66,7 +68,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # ── API Keys ───────────────────────────────────────────────────────────────────
 # Set these as Environment Variables in Render — never hardcode them here.
 API_KEY: str | None        = os.getenv("API_KEY")         # general auth key (optional)
-GEMINI_API_KEY: str | None = os.getenv("GEMINI_API_KEY")  # Google Gemini API key
+GEMINI_API_KEY: str | None = os.getenv("GEMINI_API_KEY")  # OpenRouter API key
 
 if not GEMINI_API_KEY:
     logger.warning(
@@ -567,8 +569,6 @@ class CppTranspiler(ast.NodeVisitor):
     def _fstring_expr(self, node: ast.JoinedStr) -> str:
         """
         Translate an f-string to a std::ostringstream-based lambda.
-        Using std::ostringstream with operator<< handles both numeric and string
-        values correctly without any type-checking at transpile time.
         """
         self._includes.add("<sstream>")
         self._includes.add("<string>")
@@ -767,16 +767,6 @@ class CppTranspiler(ast.NodeVisitor):
     # ── statement visitors ─────────────────────────────────────────────────────
 
     def visit_Module(self, node: ast.Module) -> None:
-        """
-        Emit a complete, compilable C++ translation unit.
-
-        Strategy
-        --------
-        • FunctionDef / AsyncFunctionDef / ClassDef nodes at module scope are
-          emitted at file scope (indent 0).
-        • All other top-level statements are wrapped in int main() { ... return 0; }.
-        • If there are no top-level executable statements, main() is omitted.
-        """
         DEFINITION_TYPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
         top_defs  = [c for c in node.body if     isinstance(c, DEFINITION_TYPES)]
         top_stmts = [c for c in node.body if not isinstance(c, DEFINITION_TYPES)]
@@ -813,8 +803,6 @@ class CppTranspiler(ast.NodeVisitor):
         self._lines.extend(def_lines)
 
         # 5. Wrap executable statements in int main() if any exist.
-        #    If there are NO top-level statements but there ARE class definitions,
-        #    emit a minimal main() so the binary links and Wandbox can run it.
         if top_stmts:
             self._emit("int main() {")
             self._lines.extend(stmt_lines)
@@ -884,17 +872,11 @@ class CppTranspiler(ast.NodeVisitor):
     # ── NEW v1.4.0: Full class support ─────────────────────────────────────────
 
     def _collect_self_attrs(self, init_node: ast.FunctionDef) -> list[tuple[str, str]]:
-        """
-        Walk an __init__ body and collect all `self.x = …` assignments.
-        Returns a list of (attr_name, cpp_type) pairs in declaration order,
-        deduplicated (first occurrence wins).
-        """
         seen: set[str] = set()
         attrs: list[tuple[str, str]] = []
         for stmt in ast.walk(init_node):
             if not isinstance(stmt, (ast.Assign, ast.AnnAssign)):
                 continue
-            # ast.Assign: targets may include self.x
             if isinstance(stmt, ast.Assign):
                 for tgt in stmt.targets:
                     if (
@@ -906,7 +888,6 @@ class CppTranspiler(ast.NodeVisitor):
                         seen.add(tgt.attr)
                         cpp_type = self._infer_member_type(tgt.attr, stmt.value)
                         attrs.append((tgt.attr, cpp_type))
-            # ast.AnnAssign: self.x: int = …
             elif isinstance(stmt, ast.AnnAssign):
                 tgt = stmt.target
                 if (
@@ -917,23 +898,12 @@ class CppTranspiler(ast.NodeVisitor):
                 ):
                     seen.add(tgt.attr)
                     cpp_type = self._annotation_to_cpp(stmt.annotation)
-                    # If annotation resolves to `auto` (e.g. Any or unknown),
-                    # fall through to name/value-based inference so we never
-                    # emit `auto` as a non-static data member.
                     if cpp_type == "auto":
                         cpp_type = self._infer_member_type(tgt.attr, stmt.value)
                     attrs.append((tgt.attr, cpp_type))
         return attrs
 
     def _emit_constructor(self, class_name: str, init_node: ast.FunctionDef) -> None:
-        """
-        Emit a C++ constructor from a Python __init__ method.
-
-        Rules:
-        • Strip `self` from the parameter list.
-        • self.x = expr assignments become `this->x = expr;` inside the body.
-        • Other statements are translated normally.
-        """
         args = init_node.args
         params: list[str] = []
         defaults_offset = len(args.args) - len(args.defaults)
@@ -955,7 +925,6 @@ class CppTranspiler(ast.NodeVisitor):
 
         outer_declared = self._declared.copy()
         for stmt in init_node.body:
-            # self.x = expr → this->x = expr
             if (
                 isinstance(stmt, ast.Assign)
                 and len(stmt.targets) == 1
@@ -985,10 +954,6 @@ class CppTranspiler(ast.NodeVisitor):
         self._emit("")
 
     def _emit_method(self, node: ast.FunctionDef) -> None:
-        """
-        Emit a regular C++ member function, stripping `self` from params
-        and rewriting `self.x` → `this->x` in the body.
-        """
         ret_type = self._return_type(node)
         args = node.args
         params: list[str] = []
@@ -1010,7 +975,6 @@ class CppTranspiler(ast.NodeVisitor):
         self._inc()
 
         outer_declared = self._declared.copy()
-        # Save old _expr and patch self-attr references
         for stmt in node.body:
             self.visit(stmt)
         self._declared = outer_declared
@@ -1020,15 +984,6 @@ class CppTranspiler(ast.NodeVisitor):
         self._emit("")
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:   # noqa: C901
-        """
-        v1.4.0 — Full class support:
-          1. Emit `class Name : public Base1, public Base2 {`.
-          2. Collect self.x attributes from __init__ and declare them as public members.
-          3. Emit constructor (from __init__), rewriting self.x → this->x.
-          4. Emit all other methods as public member functions (self stripped).
-          5. Any non-method body statement gets a warning + comment.
-        """
-        # ── class header ──────────────────────────────────────────────────────
         if node.bases:
             base_list = ", ".join(f"public {self._expr(b)}" for b in node.bases)
             self._emit(f"class {node.name} : {base_list} {{")
@@ -1038,7 +993,6 @@ class CppTranspiler(ast.NodeVisitor):
         self._emit("public:")
         self._inc()
 
-        # ── separate __init__ from other members ─────────────────────────────
         init_node: ast.FunctionDef | None = None
         other_methods: list[ast.FunctionDef] = []
         other_stmts: list[ast.stmt] = []
@@ -1054,7 +1008,6 @@ class CppTranspiler(ast.NodeVisitor):
             else:
                 other_stmts.append(stmt)
 
-        # ── 1. Declare member variables (from __init__) ───────────────────────
         if init_node:
             attrs = self._collect_self_attrs(init_node)
             if attrs:
@@ -1063,7 +1016,6 @@ class CppTranspiler(ast.NodeVisitor):
                     self._emit(f"{cpp_type} {attr_name};")
                 self._emit("")
 
-        # ── 2. Warn about unsupported body statements ─────────────────────────
         for stmt in other_stmts:
             self._warn(
                 f"Class-level statement '{type(stmt).__name__}' has no direct C++ "
@@ -1071,16 +1023,13 @@ class CppTranspiler(ast.NodeVisitor):
             )
             self._emit(f"// [unsupported class-level stmt: {type(stmt).__name__}]")
 
-        # ── 3. Constructor ────────────────────────────────────────────────────
         if init_node:
             self._emit("// --- constructor ---")
             self._emit_constructor(node.name, init_node)
 
-        # ── 4. Other methods ──────────────────────────────────────────────────
         if other_methods:
             self._emit("// --- methods ---")
         for method in other_methods:
-            # Rewrite self.attr accesses in AST before visiting
             _SelfRewriter().visit(method)
             self._emit_method(method)
 
@@ -1093,21 +1042,9 @@ class CppTranspiler(ast.NodeVisitor):
         self._emit(f"return {val};")
 
     def visit_Assign(self, node: ast.Assign) -> None:
-        """
-        Handle all Python assignment forms:
-          1. Simple name          x = expr
-          2. Subscript target     arr[i] = expr
-          3. Attribute target     self.x = expr  /  obj.attr = expr
-          4. Tuple unpacking      a, b = b, a
-          5. Chained targets      x = y = expr
-          6. Fallback             anything else → comment
-        """
         def _assign_single(target: ast.expr, val_expr: str) -> None:
             if isinstance(target, ast.Name):
                 name = target.id
-                # After _SelfRewriter, `self.x` becomes Name(id="this->x").
-                # These are already-declared class members — never re-declare
-                # them with a type prefix; just emit the plain assignment.
                 if name.startswith("this->"):
                     self._emit(f"{name} = {val_expr};")
                 elif name in self._declared:
@@ -1122,7 +1059,6 @@ class CppTranspiler(ast.NodeVisitor):
                 self._warn(f"Unsupported assignment target: {type(target).__name__}")
                 self._emit(f"/* {self._expr(target)} = {val_expr}; */")
 
-        # Case: tuple unpacking
         if (
             len(node.targets) == 1
             and isinstance(node.targets[0], ast.Tuple)
@@ -1173,27 +1109,21 @@ class CppTranspiler(ast.NodeVisitor):
                     self._emit(f"{self._expr(lhs_elt)} = std::get<{i}>({val_str});")
             return
 
-        # Case: chained assignment  x = y = expr
         if len(node.targets) > 1:
             val_str = self._expr(node.value)
             for t in node.targets:
                 _assign_single(t, val_str)
             return
 
-        # Case: single target
         _assign_single(node.targets[0], self._expr(node.value))
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         cpp_type = self._annotation_to_cpp(node.annotation)
         name = self._expr(node.target)
-        # After _SelfRewriter, `self.x: T = v` targets render as "this->x".
-        # The member is already declared in the class body — emit a plain
-        # assignment without repeating the type.
         if name.startswith("this->"):
             if node.value:
                 val = self._expr(node.value)
                 self._emit(f"{name} = {val};")
-            # No value → nothing to emit inside the constructor/method body
         elif node.value:
             val = self._expr(node.value)
             self._emit(f"{cpp_type} {name} = {val};")
@@ -1421,8 +1351,6 @@ class _SelfRewriter(ast.NodeTransformer):
     """
     Transforms `self.attr` accesses into a synthetic Name node whose id is
     `this->attr` so that _expr() can render it verbatim.
-    This is purely cosmetic and only affects the in-memory AST copy passed
-    to _emit_method — it does NOT mutate the original parsed tree.
     """
 
     def visit_Attribute(self, node: ast.Attribute) -> ast.AST:
@@ -1430,7 +1358,6 @@ class _SelfRewriter(ast.NodeTransformer):
             isinstance(node.value, ast.Name)
             and node.value.id == "self"
         ):
-            # Return a Name node that renders as `this->attr`
             new_node = ast.Name(id=f"this->{node.attr}", ctx=node.ctx)
             return ast.copy_location(new_node, node)
         return self.generic_visit(node)
@@ -1486,14 +1413,14 @@ def convert():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  /enhance  — AI-powered C++ improvement via Gemini (OpenRouter)
+#  /enhance  — AI-powered C++ improvement via Qwen3 Coder (OpenRouter)
 # ══════════════════════════════════════════════════════════════════════════════
 
 @app.route("/enhance", methods=["POST"])
 @rate_limit("20 per minute")
 def enhance():
     """
-    Accepts transpiled C++ code and returns an AI-improved version via Gemini.
+    Accepts transpiled C++ code and returns an AI-improved version via Qwen3 Coder.
 
     Request body (JSON):
         { "cpp_code": "..." }
@@ -1564,7 +1491,7 @@ C++ code to improve:
                 "X-Title": "Astmize",
             },
             json={
-                "model": "google/gemini-2.0-flash-exp:free",
+                "model": "qwen/qwen3-coder:free",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.2,
             },
@@ -1590,14 +1517,15 @@ C++ code to improve:
 
     try:
         raw_text = response.json()["choices"][0]["message"]["content"]
-        # Strip markdown fences if model adds them
-        clean = raw_text.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
-        import json
+        # Strip <think>...</think> blocks emitted by reasoning models (e.g. Qwen3)
+        clean = re.sub(r"<think>.*?</think>", "", raw_text, flags=re.DOTALL).strip()
+        # Strip any residual markdown fences
+        clean = clean.lstrip("```json").lstrip("```").rstrip("```").strip()
         parsed = json.loads(clean)
-        enhanced_code  = parsed.get("enhanced_code", "")
-        explanation    = parsed.get("explanation", "")
+        enhanced_code = parsed.get("enhanced_code", "")
+        explanation   = parsed.get("explanation", "")
     except Exception as exc:
-        logger.error("Failed to parse Gemini response: %s", exc)
+        logger.error("Failed to parse model response: %s", exc)
         return jsonify({
             "success": False,
             "enhanced_code": "",
