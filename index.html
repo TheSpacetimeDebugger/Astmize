@@ -1072,24 +1072,49 @@ function showToast(msg) {
 }
 
 // ─── Syntax highlight ─────────────────────────────────────────────────────────
-const CPP_KW   = /\b(auto|bool|break|case|char|class|const|continue|default|delete|do|double|else|enum|extern|false|float|for|if|inline|int|long|namespace|new|nullptr|operator|private|protected|public|return|short|signed|sizeof|static|std|struct|switch|template|this|throw|true|try|typedef|typename|union|unsigned|using|virtual|void|while)\b/g;
-const CPP_TYPE = /\b(string|vector|map|set|pair|tuple|array|unique_ptr|shared_ptr|optional|variant)\b/g;
-const CPP_INC  = /#include\s*[<"][^>"]*[>"]/g;
-const CPP_CMT  = /(\/\/[^\n]*)/g;
-const CPP_STR  = /("(?:\\.|[^"\\])*")/g;
-const CPP_NUM  = /\b(\d+\.?\d*[fFuUlL]*)\b/g;
-const CPP_FN   = /\b([A-Za-z_]\w*)\s*(?=\()/g;
+const CPP_KEYWORDS = new Set([
+  'auto','bool','break','case','char','class','const','continue','default','delete',
+  'do','double','else','enum','extern','false','float','for','if','inline','int',
+  'long','namespace','new','nullptr','operator','private','protected','public',
+  'return','short','signed','sizeof','static','std','struct','switch','template',
+  'this','throw','true','try','typedef','typename','union','unsigned','using',
+  'virtual','void','while'
+]);
+const CPP_TYPES = new Set([
+  'string','vector','map','set','pair','tuple','array',
+  'unique_ptr','shared_ptr','optional','variant'
+]);
+
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function highlight(code) {
-  let h = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  h = h.replace(CPP_INC, m=>`<span class="tok-inc">${m}</span>`);
-  h = h.replace(CPP_CMT, m=>`<span class="tok-cmt">${m}</span>`);
-  h = h.replace(CPP_STR, m=>`<span class="tok-str">${m}</span>`);
-  h = h.replace(CPP_NUM, m=>`<span class="tok-num">${m}</span>`);
-  h = h.replace(CPP_KW,  m=>`<span class="tok-kw">${m}</span>`);
-  h = h.replace(CPP_TYPE,m=>`<span class="tok-type">${m}</span>`);
-  h = h.replace(CPP_FN, (m,fn)=>`<span class="tok-fn">${fn}</span>(`);
-  return h;
+  // Tokenizer: split code into segments that should be highlighted differently.
+  // Order matters: comments > strings > includes > numbers > identifiers/keywords > rest
+  const TOKEN_RE = /(\/\/[^\n]*)|(\"(?:\\.|[^\"\\])*\")|(#include\s*[<"][^>"]*[>"])|(\b\d+\.?\d*[fFuUlL]*\b)|([A-Za-z_]\w*\s*(?=\())|([A-Za-z_]\w*)|([^A-Za-z_\d"#\/\n]+|.)/g;
+
+  let result = '';
+  let match;
+  while ((match = TOKEN_RE.exec(code)) !== null) {
+    const [full, cmt, str, inc, num, fnCall, ident, other] = match;
+    if (cmt)    { result += `<span class="tok-cmt">${esc(cmt)}</span>`; }
+    else if (str)    { result += `<span class="tok-str">${esc(str)}</span>`; }
+    else if (inc)    { result += `<span class="tok-inc">${esc(inc)}</span>`; }
+    else if (num)    { result += `<span class="tok-num">${esc(num)}</span>`; }
+    else if (fnCall) {
+      const name = fnCall.trimEnd().replace(/\s*\($/, '');
+      const trailing = fnCall.slice(name.length);
+      if (CPP_KEYWORDS.has(name))     result += `<span class="tok-kw">${esc(name)}</span>${esc(trailing)}`;
+      else if (CPP_TYPES.has(name))   result += `<span class="tok-type">${esc(name)}</span>${esc(trailing)}`;
+      else                             result += `<span class="tok-fn">${esc(name)}</span>${esc(trailing)}`;
+    }
+    else if (ident)  {
+      if (CPP_KEYWORDS.has(ident))    result += `<span class="tok-kw">${esc(ident)}</span>`;
+      else if (CPP_TYPES.has(ident))  result += `<span class="tok-type">${esc(ident)}</span>`;
+      else                             result += esc(ident);
+    }
+    else { result += esc(full); }
+  }
+  return result;
 }
 
 // ─── Render output ────────────────────────────────────────────────────────────
