@@ -1486,10 +1486,14 @@ Python code to convert:
                 timeout=60,
             )
 
-            if resp.status_code == 429:
-                logger.warning("Model %s returned 429 — trying next model", model)
-                last_error = f"Model {model} rate-limited (429)"
-                continue  # try next model
+            # Skip to next model on any of these transient/availability errors
+            if resp.status_code in (404, 429, 503):
+                logger.warning(
+                    "Model %s returned %d — trying next model",
+                    model, resp.status_code,
+                )
+                last_error = f"Model {model} returned {resp.status_code}"
+                continue
 
             resp.raise_for_status()
             response = resp
@@ -1501,9 +1505,14 @@ Python code to convert:
             last_error = f"Model {model} timed out"
             continue
         except http_requests.exceptions.RequestException as exc:
-            logger.error("Model %s request error: %s", model, exc)
+            # Only hard-stop on auth errors (401/403); everything else try next
+            status = getattr(exc.response, "status_code", None) if hasattr(exc, "response") else None
             last_error = str(exc)
-            break  # non-429 network error
+            if status in (401, 403):
+                logger.error("Auth error on model %s — stopping: %s", model, exc)
+                break
+            logger.error("Model %s request error: %s — trying next", model, exc)
+            continue
 
     if response is None:
         return jsonify({
