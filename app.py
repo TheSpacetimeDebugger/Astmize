@@ -447,6 +447,27 @@ class CppTranspiler(ast.NodeVisitor):
 
         if isinstance(node, ast.BinOp):
             op_type = type(node.op)
+            # ── special case: str * int  →  std::string(n, c) ────────────────
+            if op_type == ast.Mult:
+                left_is_str  = isinstance(node.left,  ast.Constant) and isinstance(node.left.value,  str)
+                right_is_str = isinstance(node.right, ast.Constant) and isinstance(node.right.value, str)
+                left_is_int  = isinstance(node.left,  ast.Constant) and isinstance(node.left.value,  int)
+                right_is_int = isinstance(node.right, ast.Constant) and isinstance(node.right.value, int)
+                if left_is_str and right_is_int:
+                    self._includes.add("<string>")
+                    s = node.left.value
+                    n = node.right.value
+                    if len(s) == 1:
+                        return f"std::string({n}, '{s}')"
+                    return f"std::string({n}, '?') /* repeated: \"{s}\" */"
+                if right_is_str and left_is_int:
+                    self._includes.add("<string>")
+                    s = node.right.value
+                    n = node.left.value
+                    if len(s) == 1:
+                        return f"std::string({n}, '{s}')"
+                    return f"std::string({n}, '?') /* repeated: \"{s}\" */"
+            # ── string + string  →  keep as + (std::string supports it) ──────
             left = self._expr(node.left)
             right = self._expr(node.right)
             if op_type == ast.Pow:
@@ -566,12 +587,8 @@ class CppTranspiler(ast.NodeVisitor):
         self._warn(f"Unsupported expression: {type(node).__name__}")
         return f"/* unsupported: {type(node).__name__} */"
 
-    def _fstring_expr(self, node: ast.JoinedStr) -> str:
-        """
-        Translate an f-string to a std::ostringstream-based lambda.
-        """
-        self._includes.add("<sstream>")
-        self._includes.add("<string>")
+    def _fstring_parts(self, node: ast.JoinedStr) -> list[str]:
+        """Return the list of << operands for an f-string."""
         parts: list[str] = []
         for val in node.values:
             if isinstance(val, ast.Constant):
@@ -581,8 +598,18 @@ class CppTranspiler(ast.NodeVisitor):
                 parts.append(self._expr(val.value))
             else:
                 parts.append('""')
-        if not parts:
-            return '""'
+        return parts or ['""']
+
+    def _fstring_expr(self, node: ast.JoinedStr) -> str:
+        """
+        Translate an f-string.
+        When used in print() directly, _call_expr inlines it as << chain.
+        When used as a value (assignment, return, etc.) we need a string,
+        so we use a compact std::ostringstream lambda.
+        """
+        self._includes.add("<sstream>")
+        self._includes.add("<string>")
+        parts = self._fstring_parts(node)
         stream_ops = " << ".join(parts)
         return f'([&](){{ std::ostringstream _oss; _oss << {stream_ops}; return _oss.str(); }}())'
 
@@ -607,11 +634,19 @@ class CppTranspiler(ast.NodeVisitor):
                 elif kw.arg == "end":
                     end = self._expr(kw.value)
 
-            if not args:
+            # Expand each argument: f-strings become << chains directly
+            def _expand(arg_node: ast.expr) -> str:
+                if isinstance(arg_node, ast.JoinedStr):
+                    return " << ".join(self._fstring_parts(arg_node))
+                return self._expr(arg_node)
+
+            expanded = [_expand(a) for a in node.args]
+
+            if not expanded:
                 return f'std::cout << {end}'
-            if len(args) == 1:
-                return f'std::cout << {args[0]} << {end}'
-            joined = f' << {sep} << '.join(args)
+            if len(expanded) == 1:
+                return f'std::cout << {expanded[0]} << {end}'
+            joined = f' << {sep} << '.join(expanded)
             return f'std::cout << {joined} << {end}'
 
         # ── len() ─────────────────────────────────────────────────────────────
@@ -911,9 +946,14 @@ class CppTranspiler(ast.NodeVisitor):
         for i, arg in enumerate(args.args):
             if arg.arg == "self":
                 continue
-            cpp_type = self._annotation_to_cpp(arg.annotation) if arg.annotation else "auto"
+            if arg.annotation:
+                cpp_type = self._annotation_to_cpp(arg.annotation)
+            else:
+                default_idx_tmp = i - defaults_offset
+                default_node = args.defaults[default_idx_tmp] if 0 <= default_idx_tmp < len(args.defaults) else None
+                cpp_type = self._infer_member_type(arg.arg, default_node)
             default_idx = i - defaults_offset
-            if default_idx >= 0:
+            if 0 <= default_idx < len(args.defaults):
                 default_val = self._expr(args.defaults[default_idx])
                 params.append(f"{cpp_type} {arg.arg} = {default_val}")
             else:
@@ -962,9 +1002,14 @@ class CppTranspiler(ast.NodeVisitor):
         for i, arg in enumerate(args.args):
             if arg.arg == "self":
                 continue
-            cpp_type = self._annotation_to_cpp(arg.annotation) if arg.annotation else "auto"
+            if arg.annotation:
+                cpp_type = self._annotation_to_cpp(arg.annotation)
+            else:
+                default_idx_tmp = i - defaults_offset
+                default_node = args.defaults[default_idx_tmp] if 0 <= default_idx_tmp < len(args.defaults) else None
+                cpp_type = self._infer_member_type(arg.arg, default_node)
             default_idx = i - defaults_offset
-            if default_idx >= 0:
+            if 0 <= default_idx < len(args.defaults):
                 default_val = self._expr(args.defaults[default_idx])
                 params.append(f"{cpp_type} {arg.arg} = {default_val}")
             else:
