@@ -963,7 +963,7 @@ function checkConsent() {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const API_URL    = 'https://astmize.onrender.com/convert';
-const TIMEOUT_MS = 60_000;
+const TIMEOUT_MS = 120_000;
 
 const EXAMPLE_CODE = `# Fibonacci with type annotations
 def fibonacci(n: int) -> int:
@@ -1381,14 +1381,14 @@ async function transpile() {
   const spinUpTimer = setTimeout(() => {
     if (isLoading) {
       alertsSection.appendChild(createAlert('info',
-        currentLang === 'ar' ? 'الخادم يعمل' : 'Server Starting Up',
+        currentLang === 'ar' ? 'جارٍ البحث عن موديل متاح…' : 'Finding Available AI Model…',
         currentLang === 'ar'
-          ? 'خادم Render في وضع السكون. يستغرق التشغيل 20-30 ثانية. يرجى الانتظار…'
-          : 'The Render server may be spinning up from sleep. This usually takes 20–30 seconds. Please hang tight…'
+          ? 'يجرّب الخادم عدة نماذج ذكاء اصطناعي مجانية بالتسلسل. قد يستغرق هذا 30-90 ثانية. يرجى الانتظار…'
+          : 'The server is trying multiple free AI models in sequence. This may take 30–90 seconds. Please hang tight…'
       ));
       setStatus('loading', t('status-waking'));
     }
-  }, 4000);
+  }, 5000);
 
   try {
     const resp = await fetch(API_URL, {
@@ -1451,8 +1451,8 @@ async function transpile() {
     let userMsg;
     if (err.name === 'AbortError') {
       userMsg = currentLang==='ar'
-        ? 'انتهت مهلة الطلب (60 ثانية). الخادم قد يكون في وضع السكون أو الذكاء الاصطناعي مشغول — حاول مرة أخرى.'
-        : 'Request timed out after 60 seconds. The server may be starting up or the AI is busy — please try again.';
+        ? 'انتهت مهلة الطلب (120 ثانية). الخادم قد يكون في وضع السكون أو الذكاء الاصطناعي مشغول — حاول مرة أخرى.'
+        : 'Request timed out after 120 seconds. The server may be starting up or the AI is busy — please try again.';
     } else if (!navigator.onLine) {
       userMsg = currentLang==='ar'
         ? 'لا يوجد اتصال بالإنترنت. تحقق من الاتصال وأعد المحاولة.'
@@ -1540,4 +1540,4 @@ checkConsent();
 setStatus('idle', t('status-ready'));
 </script>
 </body>
-  </html>
+                </html>
