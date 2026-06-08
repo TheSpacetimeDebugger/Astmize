@@ -658,7 +658,7 @@
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 const TRANSLATIONS = {
   en: {
-    'brand-sub':        'Python → C++ AST & AI Transpiler Engine',
+    'brand-sub':        'Python → C++ AI-Powered Transpiler',
     'badge-live':       'API Live',
     'label-python':     'Python Source',
     'label-cpp':        'C++ Output',
@@ -673,7 +673,7 @@ const TRANSLATIONS = {
     'footer-privacy':   'Privacy Policy',
     'footer-terms':     'Terms of Service',
     'footer-about':     'About',
-    'footer-tagline':   'AST-driven Python → C++ transpilation',
+    'footer-tagline':   'AI-powered Python → C++ transpilation',
     'modal-privacy-title': 'Privacy Policy',
     'modal-terms-title':   'Terms of Service',
     'modal-about-title':   'About Astmize',
@@ -684,7 +684,7 @@ const TRANSLATIONS = {
     'toast-copy-fail':  '⚠ Copy failed — select and copy manually',
     'toast-example':    'ℹ Example code loaded',
     'toast-cleared':    '✓ Editor cleared',
-    'status-transpiling':'Contacting Astmize API…',
+    'status-transpiling':'Sending to AI engine…',
     'status-waking':    'Server is waking up — this may take a moment…',
     'btn-run':          '▶ Run',
     'btn-download':     '⤓ Download',
@@ -696,7 +696,7 @@ const TRANSLATIONS = {
     'toast-run-fail':   '⚠ Execution request failed',
   },
   ar: {
-    'brand-sub':        'محرك تحويل Python إلى C++ بالـ AST والذكاء الاصطناعي',
+    'brand-sub':        'محرك تحويل Python إلى C++ بالذكاء الاصطناعي',
     'badge-live':       'API يعمل',
     'label-python':     'كود Python',
     'label-cpp':        'ناتج C++',
@@ -711,7 +711,7 @@ const TRANSLATIONS = {
     'footer-privacy':   'سياسة الخصوصية',
     'footer-terms':     'شروط الخدمة',
     'footer-about':     'عن المشروع',
-    'footer-tagline':   'تحويل Python → C++ عبر تحليل شجرة AST',
+    'footer-tagline':   'تحويل Python → C++ بالذكاء الاصطناعي',
     'modal-privacy-title': 'سياسة الخصوصية',
     'modal-terms-title':   'شروط الخدمة',
     'modal-about-title':   'عن Astmize',
@@ -722,7 +722,7 @@ const TRANSLATIONS = {
     'toast-copy-fail':  '⚠ فشل النسخ — يرجى النسخ يدوياً',
     'toast-example':    'ℹ تم تحميل الكود المثال',
     'toast-cleared':    '✓ تم مسح المحرر',
-    'status-transpiling':'جارٍ الاتصال بـ Astmize API…',
+    'status-transpiling':'جارٍ الإرسال إلى محرك الذكاء الاصطناعي…',
     'status-waking':    'الخادم في وضع السكون — يستغرق التشغيل 20-30 ثانية…',
     'btn-run':          '▶ تشغيل',
     'btn-download':     '⤓ تنزيل',
@@ -745,7 +745,7 @@ const MODAL_CONTENT = {
       <p><strong>Usage Data:</strong> We may collect anonymous, aggregated usage statistics (e.g. number of requests, error rates) for the purpose of improving the service. This data does not identify individual users.</p>
       <p><strong>Local Storage:</strong> We use your browser's localStorage solely to remember your language preference and cookie consent choice. No personally identifiable information is stored.</p>
       <h3>2. Third-Party Services</h3>
-      <p>Our backend API is hosted on <strong>Render.com</strong>. By using Astmize, your code submissions are subject to Render's data processing terms. We use <strong>Google Fonts</strong> to load typefaces; this may result in a request to Google's servers. No advertising networks or tracking pixels are used.</p>
+      <p>Our backend API is hosted on <strong>Render.com</strong>. By using Astmize, your code submissions are subject to Render's data processing terms. The conversion engine uses <strong>OpenRouter</strong> (Qwen3 Coder) to process your Python code — your submissions are subject to OpenRouter's privacy policy. We use <strong>Google Fonts</strong> to load typefaces; this may result in a request to Google's servers. No advertising networks or tracking pixels are used.</p>
       <h3>3. Cookies & Consent</h3>
       <p>We use only functional cookies necessary for the operation of the Service (language preference, consent status). We do not use advertising or analytics cookies without your consent.</p>
       <h3>4. Data Retention</h3>
@@ -761,7 +761,7 @@ const MODAL_CONTENT = {
       <h3>1. Acceptance of Terms</h3>
       <p>By using Astmize, you confirm that you are at least 13 years of age and accept these terms. If you do not agree, do not use the Service.</p>
       <h3>2. Description of Service</h3>
-      <p>Astmize is a free, open-source Python-to-C++ code transpilation tool. It is provided "as is" for educational and development purposes. The Service translates Python source code to C++ using Abstract Syntax Tree (AST) analysis.</p>
+      <p>Astmize is a free Python-to-C++ code transpilation tool powered by AI (Qwen3 Coder via OpenRouter). It is provided "as is" for educational and development purposes. Submitted code is sent to the OpenRouter API for processing and is not permanently stored.</p>
       <h3>3. Acceptable Use</h3>
       <p>You agree <strong>not</strong> to use the Service to:</p>
       <ul>
@@ -785,25 +785,26 @@ const MODAL_CONTENT = {
     `,
     about: `
       <h3>What is Astmize?</h3>
-      <p>Astmize is a high-performance Python → C++ transpilation engine that walks a Python Abstract Syntax Tree (AST) and emits semantically equivalent, idiomatic C++ code.</p>
-      <p>Rather than naive text substitution, Astmize operates at the tree level — understanding the <em>structure</em> of your code to make intelligent translation decisions.</p>
-      <h3>Supported Constructs</h3>
+      <p>Astmize is an AI-powered Python → C++ transpiler. It sends your Python source code to a state-of-the-art AI model (Qwen3 Coder via OpenRouter) which understands context, idioms, and semantics — producing professional, compilable C++17 output.</p>
+      <p>Unlike rule-based AST transpilers, the AI understands <em>what your code means</em>, not just its structure, resulting in cleaner and more idiomatic C++ with far fewer edge-case errors.</p>
+      <h3>How It Works</h3>
       <ul>
-        <li>Variable assignments (typed &amp; untyped)</li>
-        <li>Function definitions with type hints</li>
-        <li><code>for i in range(...)</code> and ranged-for loops</li>
-        <li><code>while</code> loops, <code>if/elif/else</code> chains</li>
-        <li>Augmented assignments (<code>+=</code>, <code>-=</code>, …)</li>
-        <li><code>print()</code> → <code>std::cout</code> with sep/end support</li>
-        <li>Try/except/finally blocks</li>
-        <li>Class definitions with constructor, member vars &amp; inheritance (v1.4.0)</li>
-        <li>Lambda expressions</li>
-        <li>Standard library mappings: <code>len</code>, <code>abs</code>, <code>max</code>, <code>min</code>, math functions, vector methods</li>
+        <li>Your Python code is sent securely to the Astmize API on Render.com</li>
+        <li>The backend forwards it to Qwen3 Coder via OpenRouter with a precise system prompt</li>
+        <li>The model returns a JSON object containing the C++ code and any translation notes</li>
+        <li>The output is syntax-highlighted and displayed instantly</li>
       </ul>
-      <h3>Architecture</h3>
-      <p>The backend is a pure-Python <strong>Flask API</strong> deployed on Render.com. The core engine (<code>CppTranspiler</code>) is a subclass of Python's built-in <code>ast.NodeVisitor</code>.</p>
+      <h3>What It Handles</h3>
+      <ul>
+        <li>Functions, classes, inheritance, constructors</li>
+        <li>Type annotations → C++ types (int, double, std::string, std::vector, etc.)</li>
+        <li>Loops, conditionals, try/except, augmented assignments</li>
+        <li><code>print()</code> → <code>std::cout</code></li>
+        <li>Lambda expressions, list/dict/set literals</li>
+        <li>Complex expressions and standard library mappings</li>
+      </ul>
       <h3>Version</h3>
-      <p>Current version: <strong>v1.4.0</strong> — Improved multi-arg print, f-string support, method mappings, try/except, class definitions, and fixed HTML injection issue in C++ output. v1.4.0 adds full class support: <code>__init__</code> → C++ constructor, member variable declarations, method emission (self stripped), single &amp; multiple inheritance. Flask-Limiter (60 req/min per IP). Bug fixes: global try/except in transpile(), safe _expr() fallback, deduplicated warnings.</p>
+      <p>Current version: <strong>v2.0.0</strong> — Replaced AST engine with full AI-powered conversion via Qwen3 Coder (OpenRouter). Same API shape as before; frontend unchanged.</p>
     `
   },
   ar: {
@@ -815,7 +816,7 @@ const MODAL_CONTENT = {
       <p><strong>بيانات الاستخدام:</strong> قد نجمع إحصائيات استخدام مجهولة الهوية (عدد الطلبات، معدلات الخطأ) لتحسين الخدمة. لا تُحدِّد هذه البيانات المستخدمين بشكل شخصي.</p>
       <p><strong>التخزين المحلي:</strong> نستخدم localStorage في المتصفح فقط لحفظ تفضيل اللغة وحالة الموافقة على ملفات تعريف الارتباط. لا تُخزَّن أي معلومات تعريفية شخصية.</p>
       <h3>٢. خدمات الطرف الثالث</h3>
-      <p>يستضيف <strong>Render.com</strong> خادم API الخاص بنا. باستخدامك Astmize، تخضع إرسالاتك لشروط معالجة بيانات Render. نستخدم <strong>خطوط Google</strong> لتحميل الخطوط، مما قد يُنشئ طلبات لخوادم Google. لا تُستخدَم شبكات الإعلانات أو بكسلات التتبع.</p>
+      <p>يستضيف <strong>Render.com</strong> خادم API الخاص بنا. باستخدامك Astmize، تخضع إرسالاتك لشروط معالجة بيانات Render. يستخدم محرك التحويل <strong>OpenRouter</strong> (Qwen3 Coder) لمعالجة كودك — تخضع إرسالاتك أيضاً لسياسة خصوصية OpenRouter. نستخدم <strong>خطوط Google</strong> لتحميل الخطوط، مما قد يُنشئ طلبات لخوادم Google. لا تُستخدَم شبكات الإعلانات أو بكسلات التتبع.</p>
       <h3>٣. ملفات تعريف الارتباط والموافقة</h3>
       <p>نستخدم فقط ملفات تعريف الارتباط الوظيفية الضرورية (تفضيل اللغة، حالة الموافقة). لا نستخدم ملفات تعريف إعلانية أو تحليلية دون موافقتك.</p>
       <h3>٤. الاحتفاظ بالبيانات</h3>
@@ -831,7 +832,7 @@ const MODAL_CONTENT = {
       <h3>١. قبول الشروط</h3>
       <p>باستخدام Astmize، تؤكد أن عمرك لا يقل عن 13 عاماً وأنك تقبل هذه الشروط. إن لم توافق، لا تستخدم الخدمة.</p>
       <h3>٢. وصف الخدمة</h3>
-      <p>Astmize أداة مجانية ومفتوحة المصدر لتحويل كود Python إلى C++. تُقدَّم "كما هي" للأغراض التعليمية والتطويرية، باستخدام تحليل شجرة AST.</p>
+      <p>Astmize أداة مجانية لتحويل كود Python إلى C++ مدعومة بالذكاء الاصطناعي (Qwen3 Coder عبر OpenRouter). تُقدَّم "كما هي" للأغراض التعليمية والتطويرية. يُرسَل الكود إلى OpenRouter API للمعالجة ولا يُخزَّن بشكل دائم.</p>
       <h3>٣. الاستخدام المقبول</h3>
       <p>توافق على <strong>عدم</strong> استخدام الخدمة لـ:</p>
       <ul>
@@ -855,25 +856,26 @@ const MODAL_CONTENT = {
     `,
     about: `
       <h3>ما هو Astmize؟</h3>
-      <p>Astmize محرك تحويل عالي الأداء من Python إلى C++. يمشي على شجرة AST (Abstract Syntax Tree) لكود Python ويُنتج كود C++ مكافئاً ومتوافقاً مع معايير اللغة.</p>
-      <p>بدلاً من الاستبدال النصي الساذج، يعمل Astmize على مستوى الشجرة — مفهماً <em>بنية</em> كودك لاتخاذ قرارات ترجمة ذكية.</p>
-      <h3>التراكيب المدعومة</h3>
+      <p>Astmize محرك تحويل ذكي من Python إلى C++ يعتمد على الذكاء الاصطناعي. يرسل كودك إلى نموذج Qwen3 Coder عبر OpenRouter، الذي يفهم السياق والمعنى — فينتج كود C++17 احترافياً وقابلاً للتجميع مباشرة.</p>
+      <p>بخلاف المحركات القائمة على قواعد AST، يفهم الذكاء الاصطناعي <em>ما يعنيه كودك</em>، لا مجرد بنيته — مما يُنتج C++ أنظف وأكثر احترافية مع أقل الأخطاء.</p>
+      <h3>كيف يعمل؟</h3>
       <ul>
-        <li>تعيينات المتغيرات (بأنواع وبدون أنواع)</li>
-        <li>تعريفات الدوال مع تلميحات الأنواع</li>
-        <li>حلقات <code>for i in range(...)</code> والحلقات الطيفية</li>
-        <li>حلقات <code>while</code> وسلاسل <code>if/elif/else</code></li>
-        <li>التعيينات المُعزَّزة (<code>+=</code>، <code>-=</code>، ...)</li>
-        <li><code>print()</code> → <code>std::cout</code> مع دعم sep/end</li>
-        <li>كتل try/except/finally</li>
-        <li>تعريفات الكلاسات الكاملة: constructor، متغيرات الأعضاء، الوراثة (v1.4.0)</li>
-        <li>تعبيرات Lambda</li>
-        <li>تعيينات مكتبة قياسية: <code>len</code>، <code>abs</code>، <code>max</code>، <code>min</code>، دوال رياضية، عمليات vector</li>
+        <li>يُرسَل كود Python بأمان إلى Astmize API على Render.com</li>
+        <li>يحوّله الـ backend إلى Qwen3 Coder عبر OpenRouter مع نظام توجيه دقيق</li>
+        <li>يُعيد النموذج كائن JSON يحتوي على كود C++ وأي ملاحظات للترجمة</li>
+        <li>يُعرض الناتج فوراً مع تمييز الكلمات المفتاحية</li>
       </ul>
-      <h3>المعمارية</h3>
-      <p>الـ backend عبارة عن <strong>Flask API</strong> خالص Python مُستضاف على Render.com. المحرك الأساسي (<code>CppTranspiler</code>) هو فئة فرعية من <code>ast.NodeVisitor</code> المدمج في Python.</p>
+      <h3>ما يدعمه</h3>
+      <ul>
+        <li>الدوال والكلاسات والوراثة والبنّاءات</li>
+        <li>تلميحات الأنواع → أنواع C++ (int, double, std::string, std::vector…)</li>
+        <li>الحلقات، الشروط، try/except، التعيينات المُعزَّزة</li>
+        <li><code>print()</code> → <code>std::cout</code></li>
+        <li>تعبيرات Lambda، القوائم والقواميس والمجموعات</li>
+        <li>التعبيرات المُركَّبة وتعيينات المكتبة القياسية</li>
+      </ul>
       <h3>الإصدار</h3>
-      <p>الإصدار الحالي: <strong>v1.4.0</strong> — تحسين print متعدد الوسائط، دعم f-string، تعيينات الطوارئ، try/except، تعريفات الأصناف، وإصلاح مشكلة حقن HTML في ناتج C++. يضيف v1.4.0 دعماً كاملاً للكلاسات: <code>__init__</code> → constructor بـ C++، إعلانات متغيرات الأعضاء، تحويل الطوارئ مع حذف self، الوراثة المفردة والمتعددة. Flask-Limiter (60 طلب/دقيقة). إصلاحات: try/except شاملة في transpile()، fallback آمن في _expr()، تكرار التحذيرات.</p>
+      <p>الإصدار الحالي: <strong>v2.0.0</strong> — استبدال محرك AST بتحويل كامل بالذكاء الاصطناعي عبر Qwen3 Coder (OpenRouter). نفس شكل الـ API السابق؛ لا تغيير في الـ frontend.</p>
     `
   }
 };
@@ -961,7 +963,7 @@ function checkConsent() {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const API_URL    = 'https://astmize.onrender.com/convert';
-const TIMEOUT_MS = 30_000;
+const TIMEOUT_MS = 60_000;
 
 const EXAMPLE_CODE = `# Fibonacci with type annotations
 def fibonacci(n: int) -> int:
@@ -1415,8 +1417,8 @@ async function transpile() {
       const warnCount = data.warnings?.length ?? 0;
       setStatus('success',
         currentLang === 'ar'
-          ? `اكتمل التحويل — ${data.cpp_code.split('\n').length} سطر C++ مُنتَج.`
-          : `Transpilation complete — ${data.cpp_code.split('\n').length} lines of C++ generated.`,
+          ? `اكتمل التحويل بالذكاء الاصطناعي — ${data.cpp_code.split('\n').length} سطر C++ مُنتَج.`
+          : `AI conversion complete — ${data.cpp_code.split('\n').length} lines of C++ generated.`,
         `${elapsed}s`
       );
       if (warnCount > 0) {
@@ -1425,19 +1427,19 @@ async function transpile() {
         ).join('');
         alertsSection.appendChild(createAlert('warning',
           currentLang === 'ar'
-            ? `تحذيرات المُحوِّل (${warnCount})`
-            : `Transpiler Warnings (${warnCount})`,
+            ? `ملاحظات الذكاء الاصطناعي (${warnCount})`
+            : `AI Translation Notes (${warnCount})`,
           warnHTML
         ));
       }
-      showToast(`✓ ${currentLang==='ar'?'تم التحويل في':'Transpiled in'} ${elapsed}s`);
+      showToast(`✓ ${currentLang==='ar'?'تم التحويل في':'Converted in'} ${elapsed}s`);
 
     } else {
       clearOutput();
-      const errMsg = data.error || 'Unknown transpilation error.';
-      setStatus('error', (currentLang==='ar'?'فشل التحويل: ':'Transpilation failed: ') + errMsg);
+      const errMsg = data.error || 'Unknown conversion error.';
+      setStatus('error', (currentLang==='ar'?'فشل التحويل: ':'Conversion failed: ') + errMsg);
       alertsSection.appendChild(createAlert('error',
-        currentLang==='ar'?'خطأ في التحويل':'Transpilation Error',
+        currentLang==='ar'?'خطأ في التحويل':'Conversion Error',
         `<div>${escHtml(errMsg)}</div>`
       ));
     }
@@ -1449,8 +1451,8 @@ async function transpile() {
     let userMsg;
     if (err.name === 'AbortError') {
       userMsg = currentLang==='ar'
-        ? 'انتهت مهلة الطلب (30 ثانية). الخادم قد يكون في وضع السكون — حاول مرة أخرى.'
-        : 'Request timed out after 30 seconds. The server may be starting up — please try again.';
+        ? 'انتهت مهلة الطلب (60 ثانية). الخادم قد يكون في وضع السكون أو الذكاء الاصطناعي مشغول — حاول مرة أخرى.'
+        : 'Request timed out after 60 seconds. The server may be starting up or the AI is busy — please try again.';
     } else if (!navigator.onLine) {
       userMsg = currentLang==='ar'
         ? 'لا يوجد اتصال بالإنترنت. تحقق من الاتصال وأعد المحاولة.'
@@ -1538,4 +1540,4 @@ checkConsent();
 setStatus('idle', t('status-ready'));
 </script>
 </body>
-</html>
+  </html>
