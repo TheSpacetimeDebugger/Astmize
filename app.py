@@ -1,40 +1,15 @@
 """
-Astmize — Python → C++ AST Transpiler Backend  v1.4.2
-Flask API server with baseline AST-driven translation engine.
+Astmize — Python → C++ AI Transpiler Backend  v2.0.0
+Flask API server. Conversion is now fully AI-powered via OpenRouter (Qwen3 Coder).
 
-Changes in v1.4.1:
-  - TYPE INFERENCE ENGINE: Added _infer_member_type() — a dedicated smart
-    inference method for class member variables (self.x assignments).
-      • Replaces the old _infer_cpp_type() call in _collect_self_attrs() which
-        could produce `auto`, an illegal type for non-static data members in C++.
-      • Priority 1 — value-based: delegates to existing _infer_cpp_type(); if the
-        RHS is a literal or container, the concrete type is used directly.
-      • Priority 2 — name-based: splits the attribute name on underscores and
-        checks each token against four keyword sets:
-          - _BOOL_KEYWORDS    → bool  (also catches is_/has_/can_/should_… prefixes)
-          - _STRING_KEYWORDS  → std::string
-          - _FLOAT_KEYWORDS   → double
-          - _INT_KEYWORDS     → int
-      • Priority 3 — safe fallback: emits `int` instead of `auto`, which C++
-        always accepts as a non-static data member without an initialiser.
-      • AnnAssign branch in _collect_self_attrs() also patched: if the Python
-        annotation resolves to `auto` (e.g. typing.Any or an unknown type),
-        _infer_member_type() is called instead of emitting `auto`.
-
-Changes in v1.4.0:
-  - SECURITY: Added Flask-Limiter with 60 req/min per IP on /convert
-    to protect against DoS floods.
-  - CLASS SUPPORT: visit_ClassDef completely rewritten:
-      • __init__ is converted to a proper C++ constructor (same name as class).
-      • self.x assignments inside __init__ become class member declarations.
-      • All other methods are emitted as regular member functions (self stripped).
-      • Base-class inheritance is preserved (single + multiple, public).
-      • Body-only pass is handled cleanly.
-  - BUG FIXES:
-      • transpile() now wraps the entire visitor in a try/except so unexpected
-        Python-level exceptions produce a clean error response rather than a 500.
-      • _expr() falls back safely for all unhandled node types.
-      • _warn() output is now deduplicated (same message won't repeat).
+Changes in v2.0.0:
+  - CORE CHANGE: /convert now uses the OpenRouter AI model directly instead of the
+    AST engine.  The response shape is unchanged: { success, cpp_code, warnings, error }
+    so the frontend requires zero modifications.
+  - The old CppTranspiler class is retained in this file for reference but is no
+    longer called by any route.
+  - /enhance route is unchanged.
+  - Timeout for /convert increased to 60 s (AI inference takes longer than AST).
 """
 
 import ast
@@ -1414,12 +1389,32 @@ class _SelfRewriter(ast.NodeTransformer):
 
 @app.route("/", methods=["GET"])
 def health_check():
-    return jsonify({"status": "ok", "service": "Astmize API", "version": "1.4.2"})
+    return jsonify({"status": "ok", "service": "Astmize API", "version": "2.0.0", "engine": "AI (OpenRouter)"})
 
 
 @app.route("/convert", methods=["POST"])
 @rate_limit("60 per minute")
 def convert():
+    """
+    AI-powered Python → C++ conversion via Qwen3 Coder (OpenRouter).
+
+    Accepts:  { "python_code": "..." }
+    Returns:  { "success": bool, "cpp_code": str, "warnings": [], "error": str|null }
+
+    The response shape is identical to the old AST route so the frontend
+    requires zero changes.
+    """
+    if not GEMINI_API_KEY:
+        return jsonify({
+            "success": False,
+            "cpp_code": "",
+            "warnings": [],
+            "error": (
+                "GEMINI_API_KEY is not configured. "
+                "Add it as an Environment Variable in your Render dashboard."
+            ),
+        }), 503
+
     payload = request.get_json(silent=True)
     if not payload or "python_code" not in payload:
         return jsonify({
@@ -1436,7 +1431,6 @@ def convert():
             "cpp_code": "", "warnings": [],
         }), 400
 
-    # Basic size guard — reject payloads larger than 100 KB
     if len(python_code) > 100_000:
         return jsonify({
             "success": False,
@@ -1444,17 +1438,97 @@ def convert():
             "cpp_code": "", "warnings": [],
         }), 413
 
-    logger.info("Received conversion request (%d chars)", len(python_code))
+    logger.info("Received AI conversion request (%d chars)", len(python_code))
 
-    transpiler = CppTranspiler()
-    result = transpiler.transpile(python_code)
-    status_code = 200 if result["success"] else 422
-    logger.info(
-        "Conversion %s — %d warnings",
-        "OK" if result["success"] else "FAILED",
-        len(result["warnings"]),
-    )
-    return jsonify(result), status_code
+    prompt = f"""You are an expert C++ developer and Python expert. Convert the following Python code to clean, idiomatic C++17.
+
+Rules:
+- Output ONLY a JSON object, no markdown, no backticks, no preamble.
+- The JSON must have exactly these keys:
+    "cpp_code"  : the full, compilable C++ source as a single string
+    "warnings"  : a JSON array of strings for any translation caveats (empty array if none)
+- Include all necessary #include headers at the top.
+- Use std::string, std::vector, std::map, std::cout, etc. as appropriate.
+- Replace print() with std::cout.
+- Preserve all logic exactly — do NOT add extra features.
+- If any construct cannot be translated cleanly, add a brief comment in the C++ code explaining why.
+
+Python code to convert:
+{python_code}"""
+
+    try:
+        response = http_requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {GEMINI_API_KEY}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://astmize.onrender.com",
+                "X-Title": "Astmize",
+            },
+            json={
+                "model": "qwen/qwen3-coder:free",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.1,
+            },
+            timeout=60,
+        )
+        response.raise_for_status()
+    except http_requests.exceptions.Timeout:
+        logger.error("OpenRouter /convert request timed out")
+        return jsonify({
+            "success": False,
+            "cpp_code": "",
+            "warnings": [],
+            "error": "AI service timed out. Please try again.",
+        }), 504
+    except http_requests.exceptions.RequestException as exc:
+        logger.error("OpenRouter /convert request failed: %s", exc)
+        return jsonify({
+            "success": False,
+            "cpp_code": "",
+            "warnings": [],
+            "error": f"AI service unavailable: {exc}",
+        }), 502
+
+    try:
+        raw_text = response.json()["choices"][0]["message"]["content"]
+
+        # Strip <think>...</think> blocks emitted by reasoning models (e.g. Qwen3)
+        clean = re.sub(r"<think>.*?</think>", "", raw_text, flags=re.DOTALL).strip()
+
+        # Strip any residual markdown fences (```json ... ``` or ``` ... ```)
+        clean = re.sub(r"^```(?:json)?\s*", "", clean, flags=re.IGNORECASE)
+        clean = re.sub(r"\s*```$", "", clean).strip()
+
+        parsed = json.loads(clean)
+        cpp_code = parsed.get("cpp_code", "").strip()
+        warnings = parsed.get("warnings", [])
+
+        # Ensure warnings is always a list of strings
+        if not isinstance(warnings, list):
+            warnings = [str(warnings)] if warnings else []
+        else:
+            warnings = [str(w) for w in warnings]
+
+        if not cpp_code:
+            raise ValueError("Model returned an empty cpp_code field.")
+
+    except (json.JSONDecodeError, ValueError, KeyError, IndexError) as exc:
+        logger.error("Failed to parse AI convert response: %s | raw: %.300s", exc, raw_text)
+        return jsonify({
+            "success": False,
+            "cpp_code": "",
+            "warnings": [],
+            "error": "Failed to parse AI response. Please try again.",
+        }), 500
+
+    logger.info("AI conversion successful (%d chars output, %d warnings)", len(cpp_code), len(warnings))
+    return jsonify({
+        "success": True,
+        "cpp_code": cpp_code,
+        "warnings": warnings,
+        "error": None,
+    }), 200
 
 
 # ══════════════════════════════════════════════════════════════════════════════
