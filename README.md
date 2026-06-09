@@ -1,99 +1,120 @@
 <div align="center">
 
-<img src="https://img.shields.io/badge/Astmize-⚡-00d4ff?style=for-the-badge&labelColor=0a0a0a" alt="Astmize"/>
+<br/>
 
-# ⚡ Astmize
+```
+   █████╗ ███████╗████████╗███╗   ███╗██╗███████╗███████╗
+  ██╔══██╗██╔════╝╚══██╔══╝████╗ ████║██║╚══███╔╝██╔════╝
+  ███████║███████╗   ██║   ██╔████╔██║██║  ███╔╝ █████╗  
+  ██╔══██║╚════██║   ██║   ██║╚██╔╝██║██║ ███╔╝  ██╔══╝  
+  ██║  ██║███████║   ██║   ██║ ╚═╝ ██║██║███████╗███████╗
+  ╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝     ╚═╝╚═╝╚══════╝╚══════╝
+```
 
-### Python → C++ AST Transpiler
+### ⚡ Python → C++ — AI-Powered Transpiler
 
-**Translate your Python source code into fast, idiomatic C++ — instantly.**
+[![Live](https://img.shields.io/badge/🌐_Live_Demo-Visit_Now-00e5ff?style=for-the-badge&labelColor=07080c)](https://thespacetimedebugger.github.io/Astmize/)
+[![API](https://img.shields.io/badge/API-v1.4.0-9b6dff?style=flat-square&labelColor=07080c)](https://thespacetimedebugger.github.io/Astmize/)
+[![License](https://img.shields.io/badge/License-MIT-00ff88?style=flat-square&labelColor=07080c)](LICENSE)
+[![Flask](https://img.shields.io/badge/Backend-Flask-lightgrey?style=flat-square&logo=flask&labelColor=07080c)](https://flask.palletsprojects.com)
+[![Deploy](https://img.shields.io/badge/Deploy-Render.com-46E3B7?style=flat-square&logo=render&labelColor=07080c)](https://render.com)
+[![Bilingual](https://img.shields.io/badge/UI-EN_|_عربي-ffaa00?style=flat-square&labelColor=07080c)](#)
 
-[![API](https://img.shields.io/badge/API-v2.0.0-00d4ff?style=flat-square)](https://thespacetimedebugger.github.io/Astmize/)
-[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.8+-blue?style=flat-square&logo=python)](https://python.org)
-[![Flask](https://img.shields.io/badge/flask-backend-lightgrey?style=flat-square&logo=flask)](https://flask.palletsprojects.com)
-[![Deploy](https://img.shields.io/badge/deploy-Render.com-46E3B7?style=flat-square&logo=render)](https://render.com)
+<br/>
 
-[**🚀 Try It Live**](https://thespacetimedebugger.github.io/Astmize/) · [**📖 API Docs**](#api-reference) · [**🐛 Report Bug**](mailto:sydbrahim02@gmail.com) · [**💡 Request Feature**](mailto:sydbrahim02@gmail.com)
+> **Write Python. Get C++. Powered by AI.**  
+> Astmize uses free AI models in sequence to intelligently translate your Python source into fast, compilable C++ — then runs it live in the browser.
+
+<br/>
 
 </div>
 
 ---
 
-## 🤔 What is Astmize?
+## ✨ What Makes Astmize Different
 
-Most transpilers do naive text substitution. **Astmize is different.**
-
-It walks your Python source as an **Abstract Syntax Tree (AST)** — understanding the *structure* of your code, not just its text — and emits semantically equivalent, idiomatic C++ on the other side.
+Most transpilers do regex-and-replace. Astmize sends your Python to an AI engine that **understands context, intent, and idiomatic C++** — then lets you run the result instantly without leaving the page.
 
 ```python
-# Python in ✨
-def compute(items: list[int]) -> int:
-    total: int = 0
-    for i in range(len(items)):
-        total += items[i]
-    return total
+# ✍️  You write this in Python
+def find_max(nums: list[int]) -> int:
+    result: int = nums[0]
+    for i in range(1, len(nums)):
+        if nums[i] > result:
+            result = nums[i]
+    return result
+
+print(find_max([3, 7, 2, 9, 1]))
 ```
 
 ```cpp
-// C++ out ⚡
+// ⚡  Astmize generates this C++
 #include <iostream>
 #include <vector>
 
-int compute(std::vector<int> items) {
-    int total = 0;
-    for (int i = 0; i < items.size(); ++i) {
-        total += items[i];
+int find_max(std::vector<int> nums) {
+    int result = nums[0];
+    for (int i = 1; i < nums.size(); ++i) {
+        if (nums[i] > result) {
+            result = nums[i];
+        }
     }
-    return total;
+    return result;
+}
+
+int main() {
+    std::cout << find_max({3, 7, 2, 9, 1}) << "\n";
+    return 0;
 }
 ```
 
-> Zero AI dependencies. Zero guessing. Pure AST-level translation.
+```
+▶ Output: 9
+```
 
 ---
 
-## ✨ Feature Highlights
+## 🚀 Features
 
-| Python | C++ Output |
+| Feature | Details |
 |---|---|
-| `def fn(x: int) -> float` | `double fn(int x)` |
-| `for i in range(n)` | `for (int i = 0; i < n; ++i)` |
-| `for item in collection` | `for (auto& item : collection)` |
-| `print(x, y)` | `std::cout << x << y << "\n"` |
-| `x: list[int] = []` | `std::vector<int> x = {}` |
-| `a if cond else b` | `(cond ? a : b)` |
-| `x += 1` | `x += 1` |
+| 🤖 **AI-Powered Translation** | Tries multiple free AI models in sequence for best results |
+| ▶ **Live C++ Execution** | Runs compiled C++ in the browser via [Wandbox](https://wandbox.org) (GCC) |
+| 🌐 **Bilingual UI** | Full English & Arabic interface with RTL support |
+| ⬇️ **Download Output** | Export your generated `.cpp` file instantly |
+| 📋 **Copy to Clipboard** | One-click copy of the generated C++ code |
+| ⚙️ **Editor Settings** | Font size, editor height, tab size, line numbers — all configurable |
+| 🛡️ **Rate Limiting** | 60 requests/min to protect server stability for all users |
+| 📱 **Mobile Responsive** | Full tab-switcher layout for small screens |
+| 🌑 **Dark Cyber UI** | Built with a dark, minimal, zero-distraction aesthetic |
+| ⌨️ **Keyboard Shortcut** | `Ctrl+Enter` / `Cmd+Enter` to transpile instantly |
 
 ---
 
-## 🗺️ Supported Constructs
+## 🧠 How It Works
 
-<details>
-<summary><b>Click to expand full support table</b></summary>
+```
+┌─────────────────┐      POST /convert       ┌──────────────────────┐
+│   Your Python   │ ─────────────────────── ▶│   Flask Backend      │
+│   (Browser UI)  │                           │                      │
+└─────────────────┘                           │  Tries AI Model 1    │
+        │                                     │  → Model 2 (if busy) │
+        │         C++ + Warnings              │  → Model 3 …         │
+        │ ◀────────────────────────────────── │                      │
+        ▼                                     └──────────────────────┘
+┌─────────────────┐
+│  Syntax-colored │      POST to Wandbox      ┌──────────────────────┐
+│  C++ output     │ ─────────────────────── ▶│  GCC Compiler (Live) │
+│                 │ ◀─────────────────────── │  stdout / stderr      │
+│  Console Output │                           └──────────────────────┘
+└─────────────────┘
+```
 
-| Construct | Status |
-|---|---|
-| Variable assignments (typed & untyped) | ✅ |
-| Function definitions with type hints | ✅ |
-| `return` statements | ✅ |
-| `for i in range(...)` loops | ✅ |
-| `for x in iterable` loops | ✅ |
-| `while` loops | ✅ |
-| `if / elif / else` chains | ✅ |
-| Augmented assignments (`+=`, `-=`, …) | ✅ |
-| Annotated assignments (`x: int = 5`) | ✅ |
-| `print()` calls | ✅ |
-| Binary & unary expressions | ✅ |
-| Comparison & boolean expressions | ✅ |
-| Ternary expressions (`a if c else b`) | ✅ |
-| `break` / `continue` / `pass` | ✅ |
-| `len()`, `abs()`, `max()`, `min()`, … | ✅ |
-| `list.append()` | ✅ |
-| Classes / decorators / generators | 🛠 In progress |
-| `async / await` | 🛠 In progress |
-
-</details>
+1. You paste Python code into the editor
+2. Astmize sends it to the Flask backend
+3. The backend queries free AI models in sequence until one responds
+4. The C++ is returned, syntax-highlighted, and displayed
+5. Optionally hit **▶ Run** to compile & execute it live via Wandbox
 
 ---
 
@@ -101,44 +122,20 @@ int compute(std::vector<int> items) {
 
 ```
 astmize/
-├── app.py            # Flask API + CppTranspiler (AST engine)
+├── app.py            # Flask API — AI orchestration & transpilation logic
 ├── requirements.txt  # Production dependencies
-├── Astmize.html      # Frontend interface
-├── Procfile
+├── index.html        # Full frontend (single-file, zero build step)
+├── Procfile          # Render/Heroku process definition
 ├── LICENSE
 └── README.md
 ```
 
-| Symbol | Role |
-|---|---|
-| `CppTranspiler` | `ast.NodeVisitor` subclass — the entire translation engine |
-| `POST /convert` | Accepts `{ "python_code": "..." }`, returns translated C++ |
-| `GET /` | Health-check / status endpoint |
+**API Endpoints**
 
----
-
-## 🚀 Quick Start
-
-```bash
-# 1. Clone the repo
-git clone https://github.com/your-org/astmize.git
-cd astmize
-
-# 2. Set up a virtual environment
-python -m venv .venv
-source .venv/bin/activate    # Windows: .venv\Scripts\activate
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. (Optional) Set environment variables
-export API_KEY="sk-your-future-llm-key"
-export FLASK_DEBUG=true
-
-# 5. Run
-python app.py
-# → http://localhost:5000
-```
+| Method | Route | Description |
+|---|---|---|
+| `GET` | `/` | Health check — returns service status |
+| `POST` | `/convert` | Accepts Python, returns AI-generated C++ |
 
 ---
 
@@ -146,85 +143,121 @@ python app.py
 
 ### `GET /`
 
-Health check.
-
 ```json
-{ "service": "Astmize API", "status": "ok", "version": "2.0.0" }
+{
+  "service": "Astmize API",
+  "status": "ok",
+  "version": "1.4.0"
+}
 ```
-
----
 
 ### `POST /convert`
 
-Translate Python source to C++.
-
 **Request**
-
 ```http
 POST /convert
 Content-Type: application/json
 
 {
-  "python_code": "def add(a: int, b: int) -> int:\n    return a + b"
+  "python_code": "def greet(name: str):\n    print(f'Hello, {name}!')"
 }
 ```
 
 **Success `200`**
-
 ```json
 {
   "success": true,
-  "cpp_code": "#include <iostream>\n\nint add(int a, int b) {\n    return a + b;\n}",
+  "cpp_code": "#include <iostream>\n#include <string>\n\nvoid greet(std::string name) {\n    std::cout << \"Hello, \" << name << \"!\" << \"\\n\";\n}\n",
   "warnings": [],
   "error": null
 }
 ```
 
 **Error `422`**
-
 ```json
 {
   "success": false,
   "cpp_code": "",
-  "warnings": [],
-  "error": "Python SyntaxError at line 3: invalid syntax"
+  "warnings": ["Unsupported construct: lambda with default args"],
+  "error": "Translation failed: could not resolve f-string expression"
 }
 ```
 
----
+**Rate Limited `429`**
+```json
+{
+  "error": "Rate limit exceeded. Please wait before retrying."
+}
+```
 
-### Testing
+<details>
+<summary><b>📬 Test with cURL / Python / Postman</b></summary>
 
 **cURL**
-
 ```bash
 # Health check
 curl https://your-app.onrender.com/
 
-# Convert a snippet
+# Transpile
 curl -X POST https://your-app.onrender.com/convert \
   -H "Content-Type: application/json" \
-  -d '{"python_code": "def add(a: int, b: int) -> int:\n    return a + b"}'
+  -d '{"python_code": "x: int = 42\nprint(x)"}'
 ```
 
 **Python**
-
 ```python
 import requests
 
 resp = requests.post(
     "https://your-app.onrender.com/convert",
-    json={"python_code": "x: int = 42\nprint(x)"},
+    json={"python_code": "for i in range(5):\n    print(i)"},
 )
-print(resp.json()["cpp_code"])
+data = resp.json()
+if data["success"]:
+    print(data["cpp_code"])
 ```
+
+**Postman**
+- Method: `POST`
+- URL: `https://your-app.onrender.com/convert`
+- Headers: `Content-Type: application/json`
+- Body → raw → JSON: `{ "python_code": "..." }`
+
+</details>
+
+---
+
+## 🖥️ Local Development
+
+```bash
+# 1. Clone
+git clone https://github.com/your-org/astmize.git
+cd astmize
+
+# 2. Virtual environment
+python -m venv .venv
+source .venv/bin/activate    # Windows: .venv\Scripts\activate
+
+# 3. Install
+pip install -r requirements.txt
+
+# 4. (Optional) environment variables
+export API_KEY="sk-your-ai-key"
+export FLASK_DEBUG=true
+
+# 5. Run
+python app.py
+# → http://localhost:5000
+```
+
+Then open `index.html` in your browser — no build step needed.
 
 ---
 
 ## ☁️ Deploy to Render
 
-1. Push this repo to GitHub.
-2. Go to [render.com](https://render.com) → **New Web Service** → connect your repo.
+1. Push to GitHub
+2. [render.com](https://render.com) → **New Web Service** → connect repo
 3. Configure:
 
 | Field | Value |
@@ -233,19 +266,26 @@ print(resp.json()["cpp_code"])
 | **Build Command** | `pip install -r requirements.txt` |
 | **Start Command** | `gunicorn app:app --workers 4 --bind 0.0.0.0:$PORT` |
 
-4. *(Optional)* Add `API_KEY` under **Environment Variables**.
+4. Add `API_KEY` under **Environment Variables** if needed
+
+> **Cold start note:** Render's free tier spins down after inactivity. The first request may take 30–90 seconds while the server wakes and finds an available AI model — the UI will notify you automatically.
 
 ---
 
 ## 📋 Changelog
 
-### v2.0.0
-- Improved class support
-- Security enhancements
-- Warnings array in API response
+### v1.4.0 — Current
+- 🤖 Replaced pure AST engine with AI model orchestration
+- 🔁 Multi-model fallback: tries multiple free AI providers in sequence
+- 🛡️ Rate limiting (60 req/min) with bilingual error messages
+- ▶ Live C++ execution via Wandbox (GCC)
+- 📱 Mobile tab-switcher layout
+- ⚙️ Editor settings panel (font size, height, tab size, line numbers)
+- 🌐 Full Arabic UI with RTL support
 
 ### v1.0.0
-- Initial release
+- Initial release with Python AST engine
+- Flask backend, dark cyber frontend
 
 ---
 
@@ -254,27 +294,39 @@ print(resp.json()["cpp_code"])
 Contributions, issues, and feature requests are welcome!
 
 1. Fork the repo
-2. Create your branch: `git checkout -b feature/amazing-feature`
-3. Commit: `git commit -m 'Add amazing feature'`
-4. Push: `git push origin feature/amazing-feature`
+2. Create your branch: `git checkout -b feature/my-feature`
+3. Commit: `git commit -m 'feat: add my feature'`
+4. Push: `git push origin feature/my-feature`
 5. Open a Pull Request
+
+Please keep PRs focused and well-described. For major changes, open an issue first to discuss.
 
 ---
 
-## 📬 Contact
+## 📬 Contact & Support
 
-**Astmize Studio** — [sydbrahim02@gmail.com](mailto:sydbrahim02@gmail.com)
+**Astmize Studio**
+
+📧 [sydbrahim02@gmail.com](mailto:sydbrahim02@gmail.com)
+
+For bugs, feature requests, or general questions — email is the best way to reach us.
 
 ---
 
 ## 📄 License
 
-MIT © [Astmize](LICENSE)
+MIT © [Astmize Studio](LICENSE)
 
 ---
 
 <div align="center">
 
-If Astmize saved you time, consider giving it a ⭐ — it helps others discover the project!
+<br/>
+
+**If Astmize saved you time or impressed you, drop a ⭐ — it means the world and helps others discover the project.**
+
+<br/>
+
+*Built with ⚡ by Astmize Studio*
 
 </div>
