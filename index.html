@@ -638,7 +638,7 @@
         </div>
       </div>
       <!-- C++ Output -->
-      <div class="panel" id="panel-cpp" role="tabpanel" aria-labelledby="tab-cpp">
+      <div class="panel tab-hidden" id="panel-cpp" role="tabpanel" aria-labelledby="tab-cpp">
         <div class="section-label label-cpp" data-i18n="label-cpp">C++ Output</div>
         <div class="editor-card output-card" id="output-card">
           <div class="editor-titlebar">
@@ -722,7 +722,7 @@
   <footer>
     <div class="footer-left">
       <span>Astmize © 2026</span>
-      <a class="footer-link" href="https://astmize-backend.onrender.com" target="_blank" rel="noopener" data-i18n="footer-api">API Endpoint ↗</a>
+      <a class="footer-link" href="https://astmize.onrender.com" target="_blank" rel="noopener" data-i18n="footer-api">API Endpoint ↗</a>
       <span class="footer-link" onclick="openModal('privacy')" data-i18n="footer-privacy">Privacy Policy</span>
       <span class="footer-link" onclick="openModal('terms')" data-i18n="footer-terms">Terms of Service</span>
       <span class="footer-link" onclick="openModal('about')" data-i18n="footer-about">About</span>
@@ -1967,6 +1967,7 @@ function clearLocalStorage() {
 setLang(currentLang);
 checkConsent();
 setStatus('idle', t('status-ready'));
+switchTab('py');
 </script>
 </body>
-                </html>
+</html>
