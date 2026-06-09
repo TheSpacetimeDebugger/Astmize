@@ -411,7 +411,120 @@
     .ratelimit-msg .rl-en { font-size:.8rem; font-weight:600; margin-bottom:4px; }
     .ratelimit-msg .rl-ar { font-family:var(--font-ar); font-size:.85rem; direction:rtl; text-align:right; opacity:.9; }
 
-        /* ── Responsive ── */
+        /* ── Settings trigger button ── */
+    .settings-trigger {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:34px; height:34px; border-radius:var(--radius-md);
+      border:1px solid var(--border); background:transparent; color:var(--text-muted);
+      cursor:pointer; transition:all var(--transition-fast); flex-shrink:0;
+    }
+    .settings-trigger:hover {
+      background:var(--bg-hover); color:var(--text-secondary);
+      border-color:var(--border-glow);
+      box-shadow:0 0 12px rgba(0,229,255,.08);
+    }
+    .settings-trigger svg { pointer-events:none; transition:transform .4s ease; }
+    .settings-trigger:hover svg { transform:rotate(30deg); }
+
+    /* ── Mobile Tab Switcher ── */
+    .mobile-tabs {
+      display:none; background:var(--bg-panel); border:1px solid var(--border);
+      border-radius:var(--radius-lg); padding:4px; gap:4px;
+    }
+    .mobile-tab {
+      flex:1; display:flex; align-items:center; justify-content:center; gap:7px;
+      padding:9px 12px; border-radius:var(--radius-md); border:none;
+      background:transparent; color:var(--text-muted);
+      font-family:var(--font-code); font-size:.68rem; font-weight:600; letter-spacing:.06em;
+      cursor:pointer; transition:all var(--transition);
+    }
+    .mobile-tab.active {
+      background:var(--bg-card); color:var(--text-primary);
+      box-shadow:0 1px 4px rgba(0,0,0,.4);
+    }
+    .tab-dot {
+      width:6px; height:6px; border-radius:50%; flex-shrink:0;
+    }
+    .tab-dot-py  { background:var(--cyan); box-shadow:0 0 5px var(--cyan); }
+    .tab-dot-cpp { background:var(--violet); box-shadow:0 0 5px var(--violet); }
+
+    /* ── Panel conversion arrow (desktop) ── */
+    .panels-wrapper { position:relative; }
+    .convert-arrow {
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      z-index:10; pointer-events:none; display:flex; flex-direction:column; align-items:center; gap:4px;
+    }
+    .convert-arrow-icon {
+      width:32px; height:32px; background:var(--bg-panel); border:1px solid var(--border-glow);
+      border-radius:50%; display:flex; align-items:center; justify-content:center;
+      font-size:.75rem; color:var(--text-muted);
+      box-shadow:0 0 12px rgba(0,0,0,.5),0 0 0 3px var(--bg-deep);
+    }
+
+    /* ── Settings Modal ── */
+    .settings-section { display:flex; flex-direction:column; gap:6px; margin-bottom:20px; }
+    .settings-section:last-child { margin-bottom:0; }
+    .settings-section-title {
+      font-family:var(--font-code); font-size:.62rem; font-weight:700; letter-spacing:.12em;
+      text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;
+      padding-bottom:8px; border-bottom:1px solid var(--border);
+    }
+    .settings-row {
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:6px 0;
+    }
+    .settings-label { font-size:.82rem; color:var(--text-secondary); }
+    .settings-label small { display:block; font-size:.68rem; color:var(--text-muted); margin-top:2px; }
+    .settings-ctrl { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+    .seg-ctrl {
+      display:flex; background:var(--bg-card); border:1px solid var(--border);
+      border-radius:100px; padding:3px; gap:2px;
+    }
+    .seg-btn {
+      padding:4px 12px; border-radius:100px; border:none; background:transparent;
+      font-family:var(--font-code); font-size:.62rem; font-weight:600; letter-spacing:.04em;
+      color:var(--text-muted); cursor:pointer; transition:all var(--transition-fast);
+    }
+    .seg-btn.active { background:var(--bg-hover); color:var(--text-secondary); }
+    .toggle-switch {
+      width:38px; height:20px; background:var(--bg-card); border:1px solid var(--border);
+      border-radius:100px; cursor:pointer; position:relative; transition:background var(--transition-fast);
+      flex-shrink:0;
+    }
+    .toggle-switch::after {
+      content:''; position:absolute; top:2px; left:2px;
+      width:14px; height:14px; border-radius:50%; background:var(--text-muted);
+      transition:all var(--transition);
+    }
+    .toggle-switch.on { background:var(--cyan-faint); border-color:rgba(0,229,255,.3); }
+    .toggle-switch.on::after { background:var(--cyan); left:calc(100% - 16px); box-shadow:0 0 6px var(--cyan); }
+
+    /* ── Improved status bar ── */
+    .status-bar { border-radius:var(--radius-md); overflow:hidden; position:relative; }
+    .status-bar::before {
+      content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
+      transition:background var(--transition);
+    }
+    .status-idle    .status-bar::before, .status-bar.status-idle::before    { background:var(--text-muted); }
+    .status-loading .status-bar::before, .status-bar.status-loading::before { background:var(--cyan); }
+    .status-success .status-bar::before, .status-bar.status-success::before { background:var(--green); }
+    .status-error   .status-bar::before, .status-bar.status-error::before   { background:var(--red); }
+    .status-warn    .status-bar::before, .status-bar.status-warn::before    { background:var(--amber); }
+
+    /* ── Improved CTA zone ── */
+    .cta-zone { position:relative; }
+    .cta-zone::before {
+      content:''; position:absolute; top:50%; left:0; right:0; height:1px;
+      background:linear-gradient(90deg,transparent,var(--border),transparent);
+      pointer-events:none;
+    }
+    .optimize-btn, .clear-btn { position:relative; z-index:1; background:var(--bg-void); }
+    .optimize-btn { padding-left:44px; padding-right:44px; }
+
+    /* ── Improved editor card focus ring ── */
+    .editor-card { transition:border-color var(--transition), box-shadow var(--transition); }
+
+    /* ── Responsive ── */
     @media (max-width:900px) {
       header { padding:14px 16px; gap:8px; }
       main   { padding:14px 16px 28px; gap:14px; }
@@ -443,12 +556,19 @@
       .output-card .editor-titlebar { flex-direction:column; align-items:flex-start; padding:8px 12px; gap:6px; }
       .output-card .titlebar-actions { width:100%; justify-content:flex-start; }
       .output-card .titlebar-left { width:100%; }
+      /* Show tab switcher on mobile */
+      .mobile-tabs { display:flex; }
+      /* Hide section labels on mobile (tabs replace them) */
+      .panel > .section-label { display:none; }
+      /* Hide inactive panel on mobile */
+      .panel.tab-hidden { display:none; }
     }
     @media (max-width:380px) {
       .badge-version { display:none; }
       .optimize-btn { font-size:.8rem; }
     }
   </style>
+</head>
 <body>
 <div class="bg-grid" aria-hidden="true"></div>
 <div class="bg-ambient" aria-hidden="true"></div>
@@ -469,14 +589,31 @@
       </div>
       <span class="badge badge-live" data-i18n="badge-live">API Live</span>
       <span class="badge badge-version">v1.4.0</span>
+      <button class="settings-trigger" id="open-settings-btn" onclick="openModal('settings')" aria-label="Settings" title="Settings">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
     </div>
   </header>
 
   <!-- MAIN -->
   <main>
+    <!-- Mobile Tab Switcher -->
+    <div class="mobile-tabs" id="mobile-tabs" role="tablist" aria-label="Editor panels">
+      <button class="mobile-tab active" id="tab-py" role="tab" aria-selected="true" aria-controls="panel-python" onclick="switchTab('py')">
+        <span class="tab-dot tab-dot-py"></span>
+        <span data-i18n="label-python">Python Source</span>
+      </button>
+      <button class="mobile-tab" id="tab-cpp" role="tab" aria-selected="false" aria-controls="panel-cpp" onclick="switchTab('cpp')">
+        <span class="tab-dot tab-dot-cpp"></span>
+        <span data-i18n="label-cpp">C++ Output</span>
+      </button>
+    </div>
+
     <div class="panels">
       <!-- Python Input -->
-      <div class="panel">
+      <div class="panel" id="panel-python" role="tabpanel" aria-labelledby="tab-py">
         <div class="section-label label-python" data-i18n="label-python">Python Source</div>
         <div class="editor-card">
           <div class="editor-titlebar">
@@ -501,7 +638,7 @@
         </div>
       </div>
       <!-- C++ Output -->
-      <div class="panel">
+      <div class="panel" id="panel-cpp" role="tabpanel" aria-labelledby="tab-cpp">
         <div class="section-label label-cpp" data-i18n="label-cpp">C++ Output</div>
         <div class="editor-card output-card" id="output-card">
           <div class="editor-titlebar">
@@ -642,6 +779,106 @@
   </div>
 </div>
 
+<!-- Settings -->
+<div class="modal-overlay" id="modal-settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="settings-title" data-i18n="modal-settings-title">Settings</span>
+      <button class="modal-close" onclick="closeModal('settings')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="settings-section">
+        <div class="settings-section-title" data-i18n="settings-editor">Editor</div>
+
+        <div class="settings-row">
+          <div class="settings-label">
+            <span data-i18n="settings-fontsize">Font Size</span>
+            <small data-i18n="settings-fontsize-sub">Code editor text size</small>
+          </div>
+          <div class="settings-ctrl">
+            <div class="seg-ctrl" role="group">
+              <button class="seg-btn" id="fs-sm" onclick="setFontSize('sm')">S</button>
+              <button class="seg-btn active" id="fs-md" onclick="setFontSize('md')">M</button>
+              <button class="seg-btn" id="fs-lg" onclick="setFontSize('lg')">L</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-label">
+            <span data-i18n="settings-editorheight">Editor Height</span>
+            <small data-i18n="settings-editorheight-sub">Minimum panel height</small>
+          </div>
+          <div class="settings-ctrl">
+            <div class="seg-ctrl" role="group">
+              <button class="seg-btn" id="eh-sm" onclick="setEditorHeight('sm')" data-i18n="settings-compact">Compact</button>
+              <button class="seg-btn active" id="eh-md" onclick="setEditorHeight('md')" data-i18n="settings-default">Default</button>
+              <button class="seg-btn" id="eh-lg" onclick="setEditorHeight('lg')" data-i18n="settings-tall">Tall</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-label">
+            <span data-i18n="settings-tabsize">Tab Size</span>
+            <small data-i18n="settings-tabsize-sub">Spaces inserted per Tab key</small>
+          </div>
+          <div class="settings-ctrl">
+            <div class="seg-ctrl" role="group">
+              <button class="seg-btn" id="ts-2" onclick="setTabSize(2)">2</button>
+              <button class="seg-btn active" id="ts-4" onclick="setTabSize(4)">4</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title" data-i18n="settings-behavior">Behavior</div>
+
+        <div class="settings-row">
+          <div class="settings-label">
+            <span data-i18n="settings-autoclear">Auto-clear output</span>
+            <small data-i18n="settings-autoclear-sub">Clear previous C++ on new transpile</small>
+          </div>
+          <div class="settings-ctrl">
+            <div class="toggle-switch on" id="toggle-autoclear" onclick="toggleSetting('autoclear')" role="switch" aria-checked="true" tabindex="0"></div>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-label">
+            <span data-i18n="settings-linenums">Line Numbers</span>
+            <small data-i18n="settings-linenums-sub">Show line numbers in Python editor</small>
+          </div>
+          <div class="settings-ctrl">
+            <div class="toggle-switch on" id="toggle-linenums" onclick="toggleSetting('linenums')" role="switch" aria-checked="true" tabindex="0"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title" data-i18n="settings-data">Data &amp; Storage</div>
+        <div class="settings-row">
+          <div class="settings-label">
+            <span data-i18n="settings-clearlocal">Clear local storage</span>
+            <small data-i18n="settings-clearlocal-sub">Reset all preferences and consent</small>
+          </div>
+          <div class="settings-ctrl">
+            <button class="modal-btn modal-btn-secondary" onclick="clearLocalStorage()" style="padding:6px 14px;font-size:.72rem;" data-i18n="settings-reset-btn">Reset All</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-btn-primary" onclick="closeModal('settings')" data-i18n="modal-close">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Consent Banner -->
 <div class="consent-banner" id="consent-banner" role="complementary">
   <div class="consent-text" id="consent-text"></div>
@@ -694,6 +931,26 @@ const TRANSLATIONS = {
     'btn-clear-console':'✕ Clear',
     'toast-download':   '✓ Downloaded output.cpp',
     'toast-run-fail':   '⚠ Execution request failed',
+    'modal-settings-title': 'Settings',
+    'settings-editor':  'Editor',
+    'settings-fontsize': 'Font Size',
+    'settings-fontsize-sub': 'Code editor text size',
+    'settings-editorheight': 'Editor Height',
+    'settings-editorheight-sub': 'Minimum panel height',
+    'settings-compact': 'Compact',
+    'settings-default': 'Default',
+    'settings-tall':    'Tall',
+    'settings-tabsize': 'Tab Size',
+    'settings-tabsize-sub': 'Spaces inserted per Tab key',
+    'settings-behavior':'Behavior',
+    'settings-autoclear':'Auto-clear output',
+    'settings-autoclear-sub':'Clear previous C++ on new transpile',
+    'settings-linenums': 'Line Numbers',
+    'settings-linenums-sub': 'Show line numbers in Python editor',
+    'settings-data':    'Data & Storage',
+    'settings-clearlocal': 'Clear local storage',
+    'settings-clearlocal-sub': 'Reset all preferences and consent',
+    'settings-reset-btn': 'Reset All',
   },
   ar: {
     'brand-sub':        'محرك تحويل Python إلى C++ بالذكاء الاصطناعي',
@@ -732,6 +989,26 @@ const TRANSLATIONS = {
     'btn-clear-console':'✕ مسح',
     'toast-download':   '✓ تم تنزيل output.cpp',
     'toast-run-fail':   '⚠ فشل طلب التشغيل',
+    'modal-settings-title': 'الإعدادات',
+    'settings-editor':  'المحرر',
+    'settings-fontsize': 'حجم الخط',
+    'settings-fontsize-sub': 'حجم النص في المحرر',
+    'settings-editorheight': 'ارتفاع المحرر',
+    'settings-editorheight-sub': 'الحد الأدنى لارتفاع اللوحة',
+    'settings-compact': 'مضغوط',
+    'settings-default': 'افتراضي',
+    'settings-tall':    'طويل',
+    'settings-tabsize': 'حجم التبويب',
+    'settings-tabsize-sub': 'المسافات عند الضغط على Tab',
+    'settings-behavior':'السلوك',
+    'settings-autoclear':'مسح تلقائي',
+    'settings-autoclear-sub':'امسح الناتج السابق عند كل تحويل',
+    'settings-linenums': 'أرقام الأسطر',
+    'settings-linenums-sub': 'إظهار أرقام الأسطر في محرر Python',
+    'settings-data':    'البيانات والتخزين',
+    'settings-clearlocal': 'مسح التخزين المحلي',
+    'settings-clearlocal-sub': 'إعادة تعيين جميع التفضيلات والموافقة',
+    'settings-reset-btn': 'إعادة تعيين الكل',
   }
 };
 
@@ -944,7 +1221,7 @@ function closeModal(id) {
 }
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    ['privacy','terms','about'].forEach(closeModal);
+    ['privacy','terms','about','settings'].forEach(closeModal);
   }
 });
 
@@ -1025,6 +1302,8 @@ const clearConsoleBtn= document.getElementById('clear-console-btn');
 let currentCpp = '';
 let isLoading  = false;
 let isRunning  = false;
+let activeTab  = 'py';
+let tabSize    = parseInt(localStorage.getItem('astmize-tabSize') || '4');
 
 // ─── Line numbers ─────────────────────────────────────────────────────────────
 function updateLineNumbers() {
@@ -1037,8 +1316,9 @@ pythonInput.addEventListener('keydown', e => {
   if (e.key === 'Tab') {
     e.preventDefault();
     const s = pythonInput.selectionStart, end = pythonInput.selectionEnd;
-    pythonInput.value = pythonInput.value.substring(0,s)+'    '+pythonInput.value.substring(end);
-    pythonInput.selectionStart = pythonInput.selectionEnd = s + 4;
+    const indent = ' '.repeat(tabSize);
+    pythonInput.value = pythonInput.value.substring(0,s)+indent+pythonInput.value.substring(end);
+    pythonInput.selectionStart = pythonInput.selectionEnd = s + tabSize;
     updateLineNumbers();
   }
 });
@@ -1371,7 +1651,7 @@ async function transpile() {
 
   clearAlerts();
   setLoading(true);
-  showLoadingShimmer();
+  if (typeof SETTINGS === 'undefined' || SETTINGS.autoclear) showLoadingShimmer();
   setStatus('loading', t('status-transpiling'));
 
   const startMs = Date.now();
@@ -1414,6 +1694,10 @@ async function transpile() {
 
     if (data.success) {
       setOutput(data.cpp_code);
+      // Auto-switch to C++ tab on mobile
+      if (window.getComputedStyle(document.getElementById('mobile-tabs')).display !== 'none') {
+        switchTab('cpp');
+      }
       const warnCount = data.warnings?.length ?? 0;
       setStatus('success',
         currentLang === 'ar'
@@ -1533,6 +1817,151 @@ downloadBtn.addEventListener('click', downloadCode);
 
 // ─── Clear Console ────────────────────────────────────────────────────────────
 clearConsoleBtn.addEventListener('click', () => { clearConsole(); showToast('✓ ' + (currentLang==='ar'?'تم مسح الوحدة':'Console cleared')); });
+
+// ─── Mobile Tab Switcher ──────────────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  const pyPanel  = document.getElementById('panel-python');
+  const cppPanel = document.getElementById('panel-cpp');
+  const tabPy    = document.getElementById('tab-py');
+  const tabCpp   = document.getElementById('tab-cpp');
+
+  pyPanel.classList.toggle('tab-hidden', tab !== 'py');
+  cppPanel.classList.toggle('tab-hidden', tab !== 'cpp');
+  tabPy.classList.toggle('active', tab === 'py');
+  tabPy.setAttribute('aria-selected', String(tab === 'py'));
+  tabCpp.classList.toggle('active', tab === 'cpp');
+  tabCpp.setAttribute('aria-selected', String(tab === 'cpp'));
+
+  // Auto-switch to output panel when transpile is done on mobile
+  if (tab === 'cpp' && !currentCpp) {
+    // keep it — user wants to see output panel
+  }
+}
+
+// ─── Settings ─────────────────────────────────────────────────────────────────
+const SETTINGS = {
+  fontSize:     localStorage.getItem('astmize-fontSize')     || 'md',
+  editorHeight: localStorage.getItem('astmize-editorHeight') || 'md',
+  tabSize:      parseInt(localStorage.getItem('astmize-tabSize') || '4'),
+  autoclear:    localStorage.getItem('astmize-autoclear')  !== 'false',
+  linenums:     localStorage.getItem('astmize-linenums')   !== 'false',
+};
+
+function applyFontSize(size) {
+  const map = { sm: '.74rem', md: '.82rem', lg: '.94rem' };
+  const val = map[size] || map.md;
+  pythonInput.style.fontSize      = val;
+  outputDisplay.style.fontSize    = val;
+  consoleBody.style.fontSize      = val;
+}
+
+function applyEditorHeight(size) {
+  const map = { sm: '200px', md: '360px', lg: '520px' };
+  const h = map[size] || map.md;
+  document.querySelectorAll('.editor-body, .output-display').forEach(el => {
+    el.style.minHeight = h;
+  });
+}
+
+function setFontSize(size) {
+  SETTINGS.fontSize = size;
+  localStorage.setItem('astmize-fontSize', size);
+  ['sm','md','lg'].forEach(s => {
+    const btn = document.getElementById(`fs-${s}`);
+    if (btn) btn.classList.toggle('active', s === size);
+  });
+  applyFontSize(size);
+}
+
+function setEditorHeight(size) {
+  SETTINGS.editorHeight = size;
+  localStorage.setItem('astmize-editorHeight', size);
+  ['sm','md','lg'].forEach(s => {
+    const btn = document.getElementById(`eh-${s}`);
+    if (btn) btn.classList.toggle('active', s === size);
+  });
+  applyEditorHeight(size);
+}
+
+function setTabSize(n) {
+  SETTINGS.tabSize = n;
+  tabSize = n;
+  localStorage.setItem('astmize-tabSize', n);
+  [2, 4].forEach(v => {
+    const btn = document.getElementById(`ts-${v}`);
+    if (btn) btn.classList.toggle('active', v === n);
+  });
+  pythonInput.style.tabSize = n;
+}
+
+function toggleSetting(key) {
+  SETTINGS[key] = !SETTINGS[key];
+  localStorage.setItem(`astmize-${key}`, String(SETTINGS[key]));
+  const toggle = document.getElementById(`toggle-${key}`);
+  if (toggle) {
+    toggle.classList.toggle('on', SETTINGS[key]);
+    toggle.setAttribute('aria-checked', String(SETTINGS[key]));
+  }
+  if (key === 'linenums') {
+    lineNumbers.style.display = SETTINGS.linenums ? '' : 'none';
+  }
+}
+
+function clearLocalStorage() {
+  ['astmize-lang','astmize-consent','astmize-fontSize','astmize-editorHeight',
+   'astmize-tabSize','astmize-autoclear','astmize-linenums']
+    .forEach(k => localStorage.removeItem(k));
+  closeModal('settings');
+  showToast(currentLang === 'ar' ? '✓ تم مسح جميع البيانات — جارٍ إعادة التحميل…' : '✓ All data cleared — reloading…');
+  setTimeout(() => location.reload(), 900);
+}
+
+// ─── Apply saved settings on load ─────────────────────────────────────────────
+(function initSettings() {
+  applyFontSize(SETTINGS.fontSize);
+  applyEditorHeight(SETTINGS.editorHeight);
+
+  // Sync font-size segment buttons
+  const fsBtn = document.getElementById(`fs-${SETTINGS.fontSize}`);
+  if (fsBtn) fsBtn.classList.add('active');
+  ['sm','md','lg'].forEach(s => {
+    if (s !== SETTINGS.fontSize) {
+      const b = document.getElementById(`fs-${s}`); if (b) b.classList.remove('active');
+    }
+  });
+
+  // Sync editor-height segment buttons
+  const ehBtn = document.getElementById(`eh-${SETTINGS.editorHeight}`);
+  if (ehBtn) ehBtn.classList.add('active');
+  ['sm','md','lg'].forEach(s => {
+    if (s !== SETTINGS.editorHeight) {
+      const b = document.getElementById(`eh-${s}`); if (b) b.classList.remove('active');
+    }
+  });
+
+  // Tab size
+  pythonInput.style.tabSize = SETTINGS.tabSize;
+  tabSize = SETTINGS.tabSize;
+  [2, 4].forEach(v => {
+    const b = document.getElementById(`ts-${v}`);
+    if (b) b.classList.toggle('active', v === SETTINGS.tabSize);
+  });
+
+  // Toggles
+  ['autoclear', 'linenums'].forEach(key => {
+    const toggle = document.getElementById(`toggle-${key}`);
+    if (toggle) {
+      toggle.classList.toggle('on', SETTINGS[key]);
+      toggle.setAttribute('aria-checked', String(SETTINGS[key]));
+    }
+  });
+
+  // Line numbers visibility
+  if (!SETTINGS.linenums) {
+    lineNumbers.style.display = 'none';
+  }
+})();
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 setLang(currentLang);
