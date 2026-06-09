@@ -14,7 +14,7 @@
 ### ⚡ Python → C++ — AI-Powered Transpiler
 
 [![Live](https://img.shields.io/badge/🌐_Live_Demo-Visit_Now-00e5ff?style=for-the-badge&labelColor=07080c)](https://thespacetimedebugger.github.io/Astmize/)
-[![API](https://img.shields.io/badge/API-v1.4.0-9b6dff?style=flat-square&labelColor=07080c)](https://thespacetimedebugger.github.io/Astmize/)
+[![API](https://img.shields.io/badge/API-v2.0.0-9b6dff?style=flat-square&labelColor=07080c)](https://thespacetimedebugger.github.io/Astmize/)
 [![License](https://img.shields.io/badge/License-MIT-00ff88?style=flat-square&labelColor=07080c)](LICENSE)
 [![Flask](https://img.shields.io/badge/Backend-Flask-lightgrey?style=flat-square&logo=flask&labelColor=07080c)](https://flask.palletsprojects.com)
 [![Deploy](https://img.shields.io/badge/Deploy-Render.com-46E3B7?style=flat-square&logo=render&labelColor=07080c)](https://render.com)
@@ -274,7 +274,7 @@ Then open `index.html` in your browser — no build step needed.
 
 ## 📋 Changelog
 
-### v1.4.0 — Current
+### v2.0.0 — Current
 - 🤖 Replaced pure AST engine with AI model orchestration
 - 🔁 Multi-model fallback: tries multiple free AI providers in sequence
 - 🛡️ Rate limiting (60 req/min) with bilingual error messages
