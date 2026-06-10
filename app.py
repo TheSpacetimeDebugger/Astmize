@@ -1490,7 +1490,7 @@ Python code to convert:
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.1,
                 },
-                timeout=60,
+                timeout=15,
             )
 
             # Skip to next model on any of these transient/availability errors
@@ -1673,7 +1673,7 @@ C++ code to improve:
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.2,
                 },
-                timeout=45,
+                timeout=15,
             )
             if resp.status_code in (404, 429, 503):
                 logger.warning("Enhance: model %s returned %d — trying next", model, resp.status_code)
@@ -1733,6 +1733,12 @@ C++ code to improve:
         "explanation": explanation,
         "error": None,
     }), 200
+
+
+# ── Warmup route (keeps Render awake via UptimeRobot) ─────────────────────────
+@app.route("/warmup")
+def warmup():
+    return jsonify({"status": "ok"}), 200
 
 
 # ── Rate-limit error handler ───────────────────────────────────────────────────
