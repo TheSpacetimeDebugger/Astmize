@@ -1642,38 +1642,70 @@ C++ code to improve:
 
     logger.info("Sending enhance request to OpenRouter (%d chars)", len(cpp_code))
 
-    try:
-        response = http_requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {GEMINI_API_KEY}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://astmize.onrender.com",
-                "X-Title": "Astmize",
-            },
-            json={
-                "model": "qwen/qwen3-coder:free",
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.2,
-            },
-            timeout=30,
-        )
-        response.raise_for_status()
-    except http_requests.exceptions.Timeout:
-        logger.error("OpenRouter request timed out")
+    # ── Same fallback chain as /convert ────────────────────────────────────────
+    MODELS = [
+        "qwen/qwen3-coder:free",
+        "deepseek/deepseek-chat-v3-0324:free",
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "openai/gpt-oss-120b:free",
+        "openai/gpt-oss-20b:free",
+        "google/gemma-4-31b-it:free",
+        "meta-llama/llama-3.3-70b-instruct:free",
+        "nousresearch/hermes-3-llama-3.1-405b:free",
+    ]
+
+    response = None
+    last_error: str = ""
+
+    for model in MODELS:
+        try:
+            logger.info("Enhance: trying model %s", model)
+            resp = http_requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {GEMINI_API_KEY}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://astmize.onrender.com",
+                    "X-Title": "Astmize",
+                },
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.2,
+                },
+                timeout=45,
+            )
+            if resp.status_code in (404, 429, 503):
+                logger.warning("Enhance: model %s returned %d — trying next", model, resp.status_code)
+                last_error = f"Model {model} returned {resp.status_code}"
+                continue
+            resp.raise_for_status()
+            response = resp
+            logger.info("Enhance: model %s accepted", model)
+            break
+        except http_requests.exceptions.Timeout:
+            logger.error("Enhance: model %s timed out — trying next", model)
+            last_error = f"Model {model} timed out"
+            continue
+        except http_requests.exceptions.RequestException as exc:
+            status = getattr(exc.response, "status_code", None) if hasattr(exc, "response") else None
+            last_error = str(exc)
+            if status in (401, 403):
+                logger.error("Enhance: auth error on %s — stopping", model)
+                break
+            logger.error("Enhance: model %s error — trying next: %s", model, exc)
+            continue
+
+    if response is None:
         return jsonify({
             "success": False,
             "enhanced_code": "",
             "explanation": "",
-            "error": "AI service timed out. Please try again.",
-        }), 504
-    except http_requests.exceptions.RequestException as exc:
-        logger.error("OpenRouter request failed: %s", exc)
-        return jsonify({
-            "success": False,
-            "enhanced_code": "",
-            "explanation": "",
-            "error": f"AI service unavailable: {exc}",
+            "error": (
+                "All AI models are currently rate-limited or unavailable. "
+                "Please wait a moment and try again. "
+                f"(Last error: {last_error})"
+            ),
         }), 502
 
     try:
