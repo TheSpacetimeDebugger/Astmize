@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Astmize ⚡ — Python → C++ Transpiler</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Syne:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
@@ -403,6 +404,72 @@
     .chip-running { background:var(--cyan-faint);   border:1px solid rgba(0,229,255,.2);   color:var(--cyan-dim); }
 
 
+    /* ── Editor stats bar ── */
+    .editor-stats {
+      display:flex; align-items:center; gap:12px; padding:5px 16px;
+      background:rgba(0,0,0,.15); border-top:1px solid var(--border);
+      font-family:var(--font-code); font-size:.62rem; color:var(--text-muted);
+      letter-spacing:.04em; flex-shrink:0;
+    }
+    .editor-stats span { transition:color var(--transition-fast); }
+    .editor-stats span.active { color:var(--cyan-dim); }
+
+    /* ── Enhance button ── */
+    .enhance-btn {
+      display:inline-flex; align-items:center; gap:6px; padding:4px 11px;
+      border-radius:var(--radius-sm); font-family:var(--font-code); font-size:.62rem;
+      font-weight:500; letter-spacing:.06em; border:1px solid rgba(155,109,255,.3);
+      background:var(--violet-faint); color:var(--violet); cursor:pointer;
+      transition:all var(--transition-fast); white-space:nowrap;
+    }
+    .enhance-btn:hover:not(:disabled) { background:rgba(155,109,255,.15); border-color:var(--violet); box-shadow:0 0 10px rgba(155,109,255,.2); }
+    .enhance-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .enhance-btn.loading { color:var(--amber); border-color:rgba(255,170,0,.3); background:var(--amber-faint); animation:runPulse 1s infinite; }
+
+    /* ── History panel ── */
+    .history-section { display:flex; flex-direction:column; gap:10px; }
+    .history-header {
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .history-list {
+      display:flex; flex-direction:column; gap:6px;
+    }
+    .history-item {
+      display:flex; align-items:center; gap:10px; padding:9px 14px;
+      background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius-md);
+      cursor:pointer; transition:all var(--transition-fast); overflow:hidden;
+    }
+    .history-item:hover { border-color:var(--border-glow); background:var(--bg-hover); }
+    .history-item-icon { font-size:.9rem; flex-shrink:0; opacity:.6; }
+    .history-item-info { flex:1; min-width:0; }
+    .history-item-preview {
+      font-family:var(--font-code); font-size:.7rem; color:var(--text-secondary);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .history-item-meta {
+      font-family:var(--font-code); font-size:.6rem; color:var(--text-muted);
+      margin-top:2px;
+    }
+    .history-item-restore {
+      font-family:var(--font-code); font-size:.58rem; color:var(--cyan-dim);
+      flex-shrink:0; opacity:0; transition:opacity var(--transition-fast);
+      padding:3px 8px; border:1px solid rgba(0,229,255,.2); border-radius:100px;
+      background:var(--cyan-faint);
+    }
+    .history-item:hover .history-item-restore { opacity:1; }
+    .history-empty {
+      font-family:var(--font-code); font-size:.72rem; color:var(--text-muted);
+      text-align:center; padding:18px; font-style:italic;
+    }
+
+    /* ── Enhance explanation alert ── */
+    .enhance-explanation {
+      background:var(--violet-faint); border:1px solid rgba(155,109,255,.2);
+      border-radius:var(--radius-md); padding:12px 16px;
+      font-family:var(--font-code); font-size:.75rem; color:rgba(155,109,255,.85); line-height:1.6;
+    }
+    .enhance-explanation strong { color:var(--violet); }
+
     /* ── Rate-limit specific alert ── */
     .alert-ratelimit { background:rgba(155,109,255,.08); border-color:rgba(155,109,255,.3); }
     .alert-ratelimit .alert-header { color:var(--violet); background:rgba(155,109,255,.06); }
@@ -588,7 +655,7 @@
         <button class="lang-btn" id="lang-ar" onclick="setLang('ar')">عربي</button>
       </div>
       <span class="badge badge-live" data-i18n="badge-live">API Live</span>
-      <span class="badge badge-version">v2.0.0</span>
+      <span class="badge badge-version">v2.0.1</span>
       <button class="settings-trigger" id="open-settings-btn" onclick="openModal('settings')" aria-label="Settings" title="Settings">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -635,6 +702,11 @@
             <textarea id="python-input" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off"
               aria-label="Python source code input"></textarea>
           </div>
+          <div class="editor-stats">
+            <span id="stat-lines">1 line</span>
+            <span>·</span>
+            <span id="stat-chars">0 chars</span>
+          </div>
         </div>
       </div>
       <!-- C++ Output -->
@@ -651,6 +723,7 @@
               <span class="titlebar-filename">output.cpp</span>
             </div>
             <div class="titlebar-actions">
+              <button class="enhance-btn"        id="enhance-btn"    disabled>✦ Enhance</button>
               <button class="action-btn dl-btn"  id="download-btn"    disabled data-i18n="btn-download">⤓ Download</button>
               <button class="action-btn run-btn" id="run-code-btn"    disabled data-i18n="btn-run">▶ Run</button>
               <button class="action-btn"         id="copy-output-btn" disabled data-i18n="btn-copy">⎘ Copy</button>
@@ -716,6 +789,18 @@
 
     <!-- Alerts -->
     <div class="alerts-section" id="alerts-section" aria-live="assertive"></div>
+
+    <!-- History -->
+    <div class="history-section" id="history-section" style="display:none">
+      <div class="history-header">
+        <div class="section-label" style="margin:0">
+          <span style="width:6px;height:6px;border-radius:1px;transform:rotate(45deg);display:inline-block;background:var(--amber);box-shadow:0 0 6px var(--amber);margin-right:8px;flex-shrink:0"></span>
+          <span id="history-title-label">Recent Conversions</span>
+        </div>
+        <button class="action-btn" id="clear-history-btn" style="font-size:.6rem">✕ Clear</button>
+      </div>
+      <div class="history-list" id="history-list"></div>
+    </div>
   </main>
 
   <!-- FOOTER -->
@@ -726,6 +811,7 @@
       <span class="footer-link" onclick="openModal('privacy')" data-i18n="footer-privacy">Privacy Policy</span>
       <span class="footer-link" onclick="openModal('terms')" data-i18n="footer-terms">Terms of Service</span>
       <span class="footer-link" onclick="openModal('about')" data-i18n="footer-about">About</span>
+      <span class="footer-link" onclick="openHistoryModal()" id="footer-history-link">⟳ History</span>
     </div>
     <span data-i18n="footer-tagline">AST-driven Python → C++ transpilation</span>
   </footer>
@@ -779,7 +865,20 @@
   </div>
 </div>
 
-<!-- Settings -->
+<!-- History Modal -->
+<div class="modal-overlay" id="modal-history" role="dialog" aria-modal="true" aria-labelledby="history-modal-title">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="history-modal-title">Recent Conversions</span>
+      <button class="modal-close" onclick="closeModal('history')" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body" id="history-modal-body" style="padding:16px 20px"></div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-btn-secondary" id="modal-clear-history-btn">✕ Clear History</button>
+      <button class="modal-btn modal-btn-primary" onclick="closeModal('history')">Close</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="modal-settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
   <div class="modal">
     <div class="modal-header">
@@ -951,6 +1050,14 @@ const TRANSLATIONS = {
     'settings-clearlocal': 'Clear local storage',
     'settings-clearlocal-sub': 'Reset all preferences and consent',
     'settings-reset-btn': 'Reset All',
+    'btn-enhance':        '✦ Enhance',
+    'btn-enhance-loading':'✦ Enhancing…',
+    'toast-enhanced':     '✦ C++ code enhanced by AI',
+    'toast-enhance-fail': '⚠ Enhancement failed',
+    'history-label':      'Recent Conversions',
+    'history-empty':      'No conversions yet',
+    'history-restore':    'Restore',
+    'footer-history':     '⟳ History',
   },
   ar: {
     'brand-sub':        'محرك تحويل Python إلى C++ بالذكاء الاصطناعي',
@@ -1009,6 +1116,14 @@ const TRANSLATIONS = {
     'settings-clearlocal': 'مسح التخزين المحلي',
     'settings-clearlocal-sub': 'إعادة تعيين جميع التفضيلات والموافقة',
     'settings-reset-btn': 'إعادة تعيين الكل',
+    'btn-enhance':        '✦ تحسين',
+    'btn-enhance-loading':'✦ جارٍ التحسين…',
+    'toast-enhanced':     '✦ تم تحسين كود C++ بالذكاء الاصطناعي',
+    'toast-enhance-fail': '⚠ فشل التحسين',
+    'history-label':      'آخر التحويلات',
+    'history-empty':      'لا توجد تحويلات بعد',
+    'history-restore':    'استعادة',
+    'footer-history':     '⟳ السجل',
   }
 };
 
@@ -1081,7 +1196,7 @@ const MODAL_CONTENT = {
         <li>Complex expressions and standard library mappings</li>
       </ul>
       <h3>Version</h3>
-      <p>Current version: <strong>v2.0.0</strong> — Replaced AST engine with full AI-powered conversion via Qwen3 Coder (OpenRouter). Same API shape as before; frontend unchanged.</p>
+      <p>Current version: <strong>v2.0.1</strong> — Added AI-powered C++ enhancement (<code>/enhance</code>), conversion history (last 7 sessions), editor line/char counter, fixed Wandbox typo, and added favicon.</p>
     `
   },
   ar: {
@@ -1152,7 +1267,7 @@ const MODAL_CONTENT = {
         <li>التعبيرات المُركَّبة وتعيينات المكتبة القياسية</li>
       </ul>
       <h3>الإصدار</h3>
-      <p>الإصدار الحالي: <strong>v2.0.0</strong> — استبدال محرك AST بتحويل كامل بالذكاء الاصطناعي عبر Qwen3 Coder (OpenRouter). نفس شكل الـ API السابق؛ لا تغيير في الـ frontend.</p>
+      <p>الإصدار الحالي: <strong>v2.0.1</strong> — إضافة تحسين C++ بالذكاء الاصطناعي (<code>/enhance</code>)، سجل آخر 7 تحويلات، عداد الأسطر والحروف في المحرر، إصلاح typo Wandbox، وإضافة favicon.</p>
     `
   }
 };
@@ -1192,6 +1307,17 @@ function setLang(lang) {
     if (el) el.innerHTML = MODAL_CONTENT[lang]?.[id] || MODAL_CONTENT['en'][id] || '';
   });
 
+  // Update history title label
+  const histLbl = document.getElementById('history-title-label');
+  if (histLbl) histLbl.textContent = t('history-label');
+  const footerHist = document.getElementById('footer-history-link');
+  if (footerHist) footerHist.textContent = t('footer-history');
+  // Update enhance button text if not loading
+  const enhBtn = document.getElementById('enhance-btn');
+  if (enhBtn && !enhBtn.classList.contains('loading')) {
+    enhBtn.textContent = t('btn-enhance');
+  }
+
   // Consent
   updateConsentText();
 }
@@ -1221,7 +1347,7 @@ function closeModal(id) {
 }
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    ['privacy','terms','about','settings'].forEach(closeModal);
+    ['privacy','terms','about','settings','history'].forEach(closeModal);
   }
 });
 
@@ -1298,6 +1424,7 @@ const consolePH      = document.getElementById('console-ph');
 const consoleChip    = document.getElementById('console-chip');
 const consoleTime    = document.getElementById('console-time');
 const clearConsoleBtn= document.getElementById('clear-console-btn');
+const enhanceBtn     = document.getElementById('enhance-btn');
 
 let currentCpp = '';
 let isLoading  = false;
@@ -1309,6 +1436,15 @@ let tabSize    = parseInt(localStorage.getItem('astmize-tabSize') || '4');
 function updateLineNumbers() {
   const lines = pythonInput.value.split('\n').length;
   lineNumbers.innerHTML = Array.from({length:lines},(_,i)=>`<span>${i+1}</span>`).join('');
+  // Update stats bar
+  const statLines = document.getElementById('stat-lines');
+  const statChars = document.getElementById('stat-chars');
+  if (statLines) statLines.textContent = lines === 1 ? '1 line' : `${lines} lines`;
+  if (statChars) {
+    const chars = pythonInput.value.length;
+    statChars.textContent = chars === 0 ? '0 chars' : `${chars.toLocaleString()} chars`;
+    statChars.classList.toggle('active', chars > 0);
+  }
 }
 pythonInput.addEventListener('input', updateLineNumbers);
 pythonInput.addEventListener('scroll', () => { lineNumbers.scrollTop = pythonInput.scrollTop; });
@@ -1416,6 +1552,7 @@ function setOutput(code) {
   copyBtn.disabled     = false;
   runBtn.disabled      = false;
   downloadBtn.disabled = false;
+  enhanceBtn.disabled  = false;
 }
 function clearOutput() {
   currentCpp = '';
@@ -1426,6 +1563,7 @@ function clearOutput() {
   copyBtn.disabled     = true;
   runBtn.disabled      = true;
   downloadBtn.disabled = true;
+  enhanceBtn.disabled  = true;
   clearConsole();
 }
 function showLoadingShimmer() {
@@ -1499,7 +1637,7 @@ function renderConsoleOutput(compileObj, runObj, elapsedSec) {
   const exitLabel = exitCode === 0
     ? (currentLang==='ar' ? 'خرج بكود 0 ✓' : 'exited with code 0 ✓')
     : (currentLang==='ar' ? `خرج بكود ${exitCode} ✗` : `exited with code ${exitCode} ✗`);
-  meta.textContent = `${exitLabel}   [${elapsedSec}s via Wandox]`;
+  meta.textContent = `${exitLabel}   [${elapsedSec}s via Wandbox]`;
   consoleBody.appendChild(meta);
 
   if (!compileErr) {
@@ -1717,6 +1855,7 @@ async function transpile() {
         ));
       }
       showToast(`✓ ${currentLang==='ar'?'تم التحويل في':'Converted in'} ${elapsed}s`);
+      saveToHistory(code, data.cpp_code, elapsed);
 
     } else {
       clearOutput();
@@ -1802,6 +1941,15 @@ pasteExampleBtn.addEventListener('click', () => {
   pythonInput.focus();
   showToast(t('toast-example'));
 });
+
+// ─── Enhance ──────────────────────────────────────────────────────────────────
+enhanceBtn.addEventListener('click', () => { if (!enhanceBtn.disabled) enhanceCode(); });
+
+// ─── History clear buttons ────────────────────────────────────────────────────
+const clearHistoryBtn = document.getElementById('clear-history-btn');
+if (clearHistoryBtn) clearHistoryBtn.addEventListener('click', clearHistory);
+const modalClearHistoryBtn = document.getElementById('modal-clear-history-btn');
+if (modalClearHistoryBtn) modalClearHistoryBtn.addEventListener('click', clearHistory);
 
 // ─── Optimize ─────────────────────────────────────────────────────────────────
 optimizeBtn.addEventListener('click', () => { if (!isLoading) transpile(); });
@@ -1908,9 +2056,189 @@ function toggleSetting(key) {
   }
 }
 
+// ─── Enhance (AI-powered C++ improvement) ────────────────────────────────────
+const ENHANCE_URL = 'https://astmize.onrender.com/enhance';
+
+async function enhanceCode() {
+  if (!currentCpp || enhanceBtn.classList.contains('loading')) return;
+
+  enhanceBtn.disabled = true;
+  enhanceBtn.classList.add('loading');
+  enhanceBtn.textContent = t('btn-enhance-loading');
+  setStatus('loading', currentLang === 'ar' ? 'جارٍ تحسين كود C++ بالذكاء الاصطناعي…' : 'AI is enhancing your C++ code…');
+
+  const startMs = Date.now();
+  try {
+    const resp = await fetch(ENHANCE_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ cpp_code: currentCpp }),
+    });
+
+    if (resp.status === 429) { showRateLimitAlert(); return; }
+
+    let data;
+    try { data = await resp.json(); }
+    catch { throw new Error(`Server returned non-JSON (HTTP ${resp.status})`); }
+
+    const elapsed = ((Date.now() - startMs) / 1000).toFixed(2);
+
+    if (data.success && data.enhanced_code) {
+      setOutput(data.enhanced_code);
+      setStatus('success',
+        currentLang === 'ar'
+          ? `تم تحسين الكود بالذكاء الاصطناعي — ${data.enhanced_code.split('\n').length} سطر.`
+          : `AI enhancement complete — ${data.enhanced_code.split('\n').length} lines.`,
+        `${elapsed}s`
+      );
+      if (data.explanation) {
+        clearAlerts();
+        alertsSection.appendChild(
+          createAlert('info',
+            currentLang === 'ar' ? '✦ ما تم تحسينه' : '✦ What Was Enhanced',
+            `<div class="enhance-explanation"><strong>${currentLang === 'ar' ? 'ملاحظات AI:' : 'AI Notes:'}</strong> ${escHtml(data.explanation)}</div>`
+          )
+        );
+      }
+      showToast(t('toast-enhanced'));
+    } else {
+      throw new Error(data.error || 'Enhancement returned empty code.');
+    }
+  } catch (err) {
+    setStatus('error', currentLang === 'ar' ? 'فشل التحسين.' : 'Enhancement failed.');
+    alertsSection.appendChild(createAlert('error',
+      currentLang === 'ar' ? 'خطأ في التحسين' : 'Enhancement Error',
+      `<div>${escHtml(err.message)}</div>`
+    ));
+    showToast(t('toast-enhance-fail'));
+  } finally {
+    enhanceBtn.disabled = false;
+    enhanceBtn.classList.remove('loading');
+    enhanceBtn.textContent = t('btn-enhance');
+  }
+}
+
+// ─── Conversion History ───────────────────────────────────────────────────────
+const HISTORY_KEY = 'astmize-history';
+const HISTORY_MAX = 7;
+
+function saveToHistory(pythonCode, cppCode, elapsedSec) {
+  let history = loadHistory();
+  const entry = {
+    id: Date.now(),
+    ts: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+    date: new Date().toLocaleDateString([], {month:'short', day:'numeric'}),
+    preview: pythonCode.trim().split('\n')[0].replace(/^#\s*/, '').slice(0, 60) || '(untitled)',
+    lines: cppCode.split('\n').length,
+    elapsed: elapsedSec,
+    python: pythonCode,
+    cpp: cppCode,
+  };
+  history.unshift(entry);
+  if (history.length > HISTORY_MAX) history = history.slice(0, HISTORY_MAX);
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch {}
+  renderHistoryBar();
+}
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function clearHistory() {
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistoryBar();
+  closeModal('history');
+  showToast(currentLang === 'ar' ? '✓ تم مسح السجل' : '✓ History cleared');
+}
+
+function renderHistoryBar() {
+  const history = loadHistory();
+  const section = document.getElementById('history-section');
+  const list    = document.getElementById('history-list');
+  if (!section || !list) return;
+
+  if (history.length === 0) { section.style.display = 'none'; return; }
+
+  section.style.display = '';
+  list.innerHTML = '';
+  history.slice(0, 3).forEach(entry => {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `
+      <span class="history-item-icon">⟳</span>
+      <div class="history-item-info">
+        <div class="history-item-preview">${escHtml(entry.preview)}</div>
+        <div class="history-item-meta">${entry.date} · ${entry.lines} lines C++ · ${entry.elapsed}s</div>
+      </div>
+      <span class="history-item-restore">${t('history-restore')}</span>
+    `;
+    item.addEventListener('click', () => {
+      pythonInput.value = entry.python;
+      updateLineNumbers();
+      setOutput(entry.cpp);
+      clearAlerts();
+      setStatus('success',
+        currentLang === 'ar' ? 'تم استعادة التحويل السابق' : 'Previous conversion restored',
+        `${entry.elapsed}s`
+      );
+      showToast(currentLang === 'ar' ? '⟳ تم الاستعادة' : '⟳ Restored');
+      // switch to python tab on mobile
+      if (window.getComputedStyle(document.getElementById('mobile-tabs')).display !== 'none') {
+        switchTab('py');
+      }
+    });
+    list.appendChild(item);
+  });
+}
+
+function openHistoryModal() {
+  const history = loadHistory();
+  const body = document.getElementById('history-modal-body');
+  if (!body) return;
+  const titleEl = document.getElementById('history-modal-title');
+  if (titleEl) titleEl.textContent = t('history-label');
+  if (history.length === 0) {
+    body.innerHTML = `<div class="history-empty">${t('history-empty')}</div>`;
+  } else {
+    body.innerHTML = '';
+    history.forEach((entry, idx) => {
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.style.marginBottom = '8px';
+      item.innerHTML = `
+        <span class="history-item-icon">${idx + 1}.</span>
+        <div class="history-item-info">
+          <div class="history-item-preview">${escHtml(entry.preview)}</div>
+          <div class="history-item-meta">${entry.date} ${entry.ts} · ${entry.lines} lines · ${entry.elapsed}s</div>
+        </div>
+        <span class="history-item-restore">${t('history-restore')}</span>
+      `;
+      item.addEventListener('click', () => {
+        pythonInput.value = entry.python;
+        updateLineNumbers();
+        setOutput(entry.cpp);
+        clearAlerts();
+        setStatus('success',
+          currentLang === 'ar' ? 'تم استعادة التحويل' : 'Conversion restored',
+          `${entry.elapsed}s`
+        );
+        closeModal('history');
+        showToast(currentLang === 'ar' ? '⟳ تم الاستعادة' : '⟳ Restored');
+      });
+      body.appendChild(item);
+    });
+  }
+  document.getElementById('modal-history').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('modal-history').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-history')) closeModal('history');
+  }, {once: true});
+}
+
 function clearLocalStorage() {
   ['astmize-lang','astmize-consent','astmize-fontSize','astmize-editorHeight',
-   'astmize-tabSize','astmize-autoclear','astmize-linenums']
+   'astmize-tabSize','astmize-autoclear','astmize-linenums', HISTORY_KEY]
     .forEach(k => localStorage.removeItem(k));
   closeModal('settings');
   showToast(currentLang === 'ar' ? '✓ تم مسح جميع البيانات — جارٍ إعادة التحميل…' : '✓ All data cleared — reloading…');
@@ -1967,6 +2295,7 @@ function clearLocalStorage() {
 setLang(currentLang);
 checkConsent();
 setStatus('idle', t('status-ready'));
+renderHistoryBar();
 switchTab('py');
 </script>
 </body>
