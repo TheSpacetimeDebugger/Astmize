@@ -14,7 +14,8 @@
 ### ⚡ Python → C++ — AI-Powered Transpiler
 
 [![Live](https://img.shields.io/badge/🌐_Live_Demo-Visit_Now-00e5ff?style=for-the-badge&labelColor=07080c)](https://thespacetimedebugger.github.io/Astmize/)
-[![API](https://img.shields.io/badge/API-v2.0.1-9b6dff?style=flat-square&labelColor=07080c)](https://thespacetimedebugger.github.io/Astmize/)
+[![Product Hunt](https://img.shields.io/badge/Product_Hunt-Astmize-ff6154?style=for-the-badge&logo=producthunt&logoColor=white&labelColor=07080c)](https://www.producthunt.com/products/astmize-python-c-transpiler)
+[![API](https://img.shields.io/badge/API-v2.0.1-9b6dff?style=flat-square&labelColor=07080c)](https://astmize.onrender.com)
 [![License](https://img.shields.io/badge/License-MIT-00ff88?style=flat-square&labelColor=07080c)](LICENSE)
 [![Flask](https://img.shields.io/badge/Backend-Flask-lightgrey?style=flat-square&logo=flask&labelColor=07080c)](https://flask.palletsprojects.com)
 [![Deploy](https://img.shields.io/badge/Deploy-Render.com-46E3B7?style=flat-square&logo=render&labelColor=07080c)](https://render.com)
@@ -98,7 +99,7 @@ int main() {
 
 ```
 ┌─────────────────┐      POST /convert       ┌──────────────────────┐
-│   Your Python   │ ─────────────────────── ▶│   Flask Backend      │
+│   Your Python   │ ────────────────────── ▶│   Flask Backend      │
 │   (Browser UI)  │                           │                      │
 └─────────────────┘                           │  Tries AI Model 1    │
         │                                     │  → Model 2 (if busy) │
@@ -106,11 +107,11 @@ int main() {
         │ ◀────────────────────────────────── │                      │
         ▼                                     └──────────────────────┘
 ┌─────────────────┐      POST /enhance        ┌──────────────────────┐
-│  Syntax-colored │ ─────────────────────── ▶│  Qwen3 Coder (AI)    │
+│  Syntax-colored │ ────────────────────── ▶│  Qwen3 Coder (AI)    │
 │  C++ output     │ ◀─────────────────────── │  Refactor + Explain  │
 │                 │                           └──────────────────────┘
 │  [ ✦ Enhance ] │      POST to Wandbox      ┌──────────────────────┐
-│  [ ▶ Run     ] │ ─────────────────────── ▶│  GCC Compiler (Live) │
+│  [ ▶ Run     ] │ ────────────────────── ▶│  GCC Compiler (Live) │
 │                 │ ◀─────────────────────── │  stdout / stderr      │
 │  Console Output │                           └──────────────────────┘
 └─────────────────┘
@@ -284,7 +285,7 @@ print(resp2.json()["explanation"])
 
 ```bash
 # 1. Clone
-git clone https://github.com/thespacetimedebugger/Astmize.git
+git clone https://github.com/TheSpacetimeDebugger/Astmize.git
 cd Astmize
 
 # 2. Virtual environment
@@ -295,7 +296,7 @@ source .venv/bin/activate    # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 # 4. Environment variables
-export GEMINI_API_KEY="your-openrouter-api-key"
+export OPENROUTER_API_KEY="your-openrouter-api-key"
 export FLASK_DEBUG=true
 
 # 5. Run
@@ -321,7 +322,7 @@ Then open `index.html` in your browser — no build step needed.
 | **Build Command** | `pip install -r requirements.txt` |
 | **Start Command** | `gunicorn app:app --workers 4 --bind 0.0.0.0:$PORT` |
 
-4. Add `GEMINI_API_KEY` under **Environment Variables**
+4. Add `OPENROUTER_API_KEY` under **Environment Variables**
 
 > **Cold start note:** Render's free tier spins down after inactivity. The first request may take 30–90 seconds while the server wakes and finds an available AI model — the UI will notify you automatically.
 
@@ -367,11 +368,13 @@ Please keep PRs focused and well-described. For major changes, open an issue fir
 
 ## 📬 Contact & Support
 
-**Astmize Studio**
+**Astmize Studio** · Built by [Ibrahim El-Shami](https://www.linkedin.com/in/ibrahim-el-shami-63a960415)
 
-📧 [sydbrahim02@gmail.com](mailto:sydbrahim02@gmail.com)
+📧 [sydbrahim02@gmail.com](mailto:sydbrahim02@gmail.com)  
+🐦 [@astmize](https://x.com/astmize)  
+🚀 [Product Hunt](https://www.producthunt.com/products/astmize-python-c-transpiler)
 
-For bugs, feature requests, or general questions — email is the best way to reach us.
+For bugs, feature requests, or general questions — email or open a GitHub issue.
 
 ---
 
