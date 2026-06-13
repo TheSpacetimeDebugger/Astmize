@@ -43,11 +43,11 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # ── API Keys ───────────────────────────────────────────────────────────────────
 # Set these as Environment Variables in Render — never hardcode them here.
 API_KEY: str | None        = os.getenv("API_KEY")         # general auth key (optional)
-GEMINI_API_KEY: str | None = os.getenv("GEMINI_API_KEY")  # OpenRouter API key
+OPENROUTER_API_KEY: str | None = os.getenv("OPENROUTER_API_KEY")  # OpenRouter API key
 
-if not GEMINI_API_KEY:
+if not OPENROUTER_API_KEY:
     logger.warning(
-        "GEMINI_API_KEY is not set. "
+        "OPENROUTER_API_KEY is not set. "
         "Add it as an Environment Variable in your Render dashboard."
     )
 
@@ -1404,13 +1404,13 @@ def convert():
     The response shape is identical to the old AST route so the frontend
     requires zero changes.
     """
-    if not GEMINI_API_KEY:
+    if not OPENROUTER_API_KEY:
         return jsonify({
             "success": False,
             "cpp_code": "",
             "warnings": [],
             "error": (
-                "GEMINI_API_KEY is not configured. "
+                "OPENROUTER_API_KEY is not configured. "
                 "Add it as an Environment Variable in your Render dashboard."
             ),
         }), 503
@@ -1459,16 +1459,16 @@ Python code to convert:
     # ── Model fallback chain ────────────────────────────────────────────────────
     # Try each free model in order; skip to the next on 429 (rate-limit).
     # Each model has its own independent 200 req/day quota on OpenRouter.
-    # Ordered best-to-worst for code generation quality.
+    # Ordered fastest-first: small/mid models respond in ~2-5s; large 100B+ models in ~10-30s.
     MODELS = [
-        "qwen/qwen3-coder:free",                       # best coder, 1M ctx
+        "openai/gpt-oss-20b:free",                     # 20B — fastest response time
+        "google/gemma-4-31b-it:free",                  # 31B — fast, Google infra
         "deepseek/deepseek-chat-v3-0324:free",         # strong coder, 131K ctx
-        "nvidia/nemotron-3-super-120b-a12b:free",      # 120B, 1M ctx
+        "meta-llama/llama-3.3-70b-instruct:free",      # 70B — reliable, well-optimized
+        "qwen/qwen3-coder:free",                       # best code quality, 1M ctx (slower)
         "openai/gpt-oss-120b:free",                    # 120B OpenAI OSS
-        "openai/gpt-oss-20b:free",                     # lighter OpenAI OSS
-        "google/gemma-4-31b-it:free",                  # Google, 262K ctx
-        "meta-llama/llama-3.3-70b-instruct:free",      # Meta, reliable fallback
-        "nousresearch/hermes-3-llama-3.1-405b:free",   # 405B last resort
+        "nvidia/nemotron-3-super-120b-a12b:free",      # 120B, 1M ctx
+        "nousresearch/hermes-3-llama-3.1-405b:free",   # 405B last resort — slowest
     ]
 
     response = None
@@ -1480,7 +1480,7 @@ Python code to convert:
             resp = http_requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={
-                    "Authorization": f"Bearer {GEMINI_API_KEY}",
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
                     "Content-Type": "application/json",
                     "HTTP-Referer": "https://astmize.onrender.com",
                     "X-Title": "Astmize",
@@ -1594,12 +1594,12 @@ def enhance():
             "error": null
         }
     """
-    if not GEMINI_API_KEY:
+    if not OPENROUTER_API_KEY:
         return jsonify({
             "success": False,
             "enhanced_code": "",
             "explanation": "",
-            "error": "GEMINI_API_KEY is not configured. Add it in your Render environment variables.",
+            "error": "OPENROUTER_API_KEY is not configured. Add it in your Render environment variables.",
         }), 503
 
     payload = request.get_json(silent=True)
@@ -1642,16 +1642,16 @@ C++ code to improve:
 
     logger.info("Sending enhance request to OpenRouter (%d chars)", len(cpp_code))
 
-    # ── Same fallback chain as /convert ────────────────────────────────────────
+    # ── Same fallback chain as /convert — fastest first ────────────────────────
     MODELS = [
-        "qwen/qwen3-coder:free",
-        "deepseek/deepseek-chat-v3-0324:free",
-        "nvidia/nemotron-3-super-120b-a12b:free",
-        "openai/gpt-oss-120b:free",
-        "openai/gpt-oss-20b:free",
-        "google/gemma-4-31b-it:free",
-        "meta-llama/llama-3.3-70b-instruct:free",
-        "nousresearch/hermes-3-llama-3.1-405b:free",
+        "openai/gpt-oss-20b:free",                     # 20B — fastest response time
+        "google/gemma-4-31b-it:free",                  # 31B — fast, Google infra
+        "deepseek/deepseek-chat-v3-0324:free",         # strong coder, 131K ctx
+        "meta-llama/llama-3.3-70b-instruct:free",      # 70B — reliable, well-optimized
+        "qwen/qwen3-coder:free",                       # best code quality, 1M ctx (slower)
+        "openai/gpt-oss-120b:free",                    # 120B OpenAI OSS
+        "nvidia/nemotron-3-super-120b-a12b:free",      # 120B, 1M ctx
+        "nousresearch/hermes-3-llama-3.1-405b:free",   # 405B last resort — slowest
     ]
 
     response = None
@@ -1663,7 +1663,7 @@ C++ code to improve:
             resp = http_requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={
-                    "Authorization": f"Bearer {GEMINI_API_KEY}",
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
                     "Content-Type": "application/json",
                     "HTTP-Referer": "https://astmize.onrender.com",
                     "X-Title": "Astmize",
