@@ -371,7 +371,6 @@ Please keep PRs focused and well-described. For major changes, open an issue fir
 **Astmize Studio** · Built by [Ibrahim El-Shami](https://www.linkedin.com/in/ibrahim-el-shami-63a960415)
 
 📧 [sydbrahim02@gmail.com](mailto:sydbrahim02@gmail.com)  
-🐦 [@astmize](https://x.com/astmize)  
 🚀 [Product Hunt](https://www.producthunt.com/products/astmize-python-c-transpiler)
 
 For bugs, feature requests, or general questions — email or open a GitHub issue.
