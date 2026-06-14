@@ -32,6 +32,24 @@
 
 ---
 
+## 📦 Supported Versions
+
+[![Python](https://img.shields.io/badge/Python-3.x-3776AB?style=flat-square&logo=python&logoColor=white&labelColor=07080c)](https://www.python.org/)
+[![C++](https://img.shields.io/badge/C++-11_|_17-00599C?style=flat-square&logo=cplusplus&logoColor=white&labelColor=07080c)](https://isocpp.org/)
+[![Status](https://img.shields.io/badge/Status-Active-00ff88?style=flat-square&labelColor=07080c)](#)
+
+Astmize accepts **Python 3.x** source (type hints, f-strings, modern syntax) and transpiles it into clean, ready-to-compile **C++11 / C++17**.
+
+| Input | Output | Notes |
+|---|---|---|
+| 🐍 **Python 3.x** | ⚡ **C++11 / C++17** | Idiomatic, standard-library-based output (`<vector>`, `<string>`, `<iostream>`, etc.) |
+| Type-hinted functions & variables | Strongly-typed C++ equivalents | AI infers types when hints are absent |
+| Core syntax (loops, functions, conditionals, list ops) | STL-based translations (`std::vector`, `std::max_element`, etc.) | Optimized for readability and compilation |
+
+> 🔍 **Keywords:** Python to C++ transpiler · AI-powered code optimization · AI code converter · C++11 / C++17 code generation · educational prototyping tool · learn C++ from Python
+
+---
+
 ## ✨ What Makes Astmize Different
 
 Most transpilers do regex-and-replace. Astmize sends your Python to an AI engine that **understands context, intent, and idiomatic C++** — then lets you run and enhance the result instantly without leaving the page.
@@ -92,6 +110,12 @@ int main() {
 | 📱 **Mobile Responsive** | Full tab-switcher layout for small screens |
 | 🌑 **Dark Cyber UI** | Built with a dark, minimal, zero-distraction aesthetic |
 | ⌨️ **Keyboard Shortcut** | `Ctrl+Enter` / `Cmd+Enter` to transpile instantly |
+| ❓ **Shortcuts Guide** | In-app modal listing every keyboard shortcut |
+| 📊 **Complexity Indicator** | Live "simple / moderate / complex" estimate as you type |
+| ↔️ **Resizable Panels** | Drag the divider to resize the Python/C++ editors — ratio remembered across visits |
+| ⤓ **Multi-Format Export** | Download `.cpp`, or copy as Markdown / plain text via the export dropdown |
+| 📲 **Installable PWA** | Add to home screen with offline caching via Service Worker |
+| 🍪 **Privacy Consent Banner** | Lightweight, dismissible cookie/consent notice |
 
 ---
 
@@ -330,7 +354,16 @@ Then open `index.html` in your browser — no build step needed.
 
 ## 📋 Changelog
 
-### v2.0.1 — Current
+### v2.1.0 — Current
+- 📦 **Supported Versions** section added — Python 3.x → C++11 / C++17 clarified up front
+- 📊 **Complexity Indicator** — real-time simple/moderate/complex estimate while typing
+- ↔️ **Resizable Panels** — drag to resize Python/C++ editors, with saved layout ratio
+- ⤓ **Export Dropdown** — download `.cpp` or copy as Markdown/plain text
+- ❓ **Keyboard Shortcuts Modal** — quick-reference guide accessible from the header
+- 📲 **PWA Support** — installable, offline-capable via Service Worker
+- 🍪 **Consent Banner** — added lightweight privacy notice
+
+### v2.0.1
 - ✦ **AI Enhancement** — new `/enhance` endpoint integrated into the UI; one click refactors your C++ and explains what changed
 - ⟳ **Conversion History** — last 7 conversions stored in localStorage with one-click restore
 - 🔢 **Editor Stats Bar** — live line and character counter below the Python editor
