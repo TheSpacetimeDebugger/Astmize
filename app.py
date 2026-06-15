@@ -1,5 +1,5 @@
 """
-Astmize — Python → C++ AI Transpiler Backend  v2.1.0
+Astmize — Python → C++ AI Transpiler Backend  v2.2.0
 Flask API server. Conversion is now fully AI-powered via OpenRouter (Qwen3 Coder + fallback chain).
 
 Changes in v2.1.0:
