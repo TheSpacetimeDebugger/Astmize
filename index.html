@@ -65,6 +65,65 @@
       --transition: 0.22s cubic-bezier(0.4,0,0.2,1);
       --transition-fast: 0.12s ease;
     }
+    /* Donation Widget - Astmize Native Style Override */
+.crypto-donation-section {
+  background: var(--bg-panel) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3) !important;
+  max-width: 420px !important;
+  transition: all var(--transition) !important;
+}
+.crypto-donation-section:hover {
+  border-color: var(--border-glow) !important;
+  background: var(--bg-panel-alt) !important;
+}
+.crypto-donation-section h4 {
+  color: var(--text-primary) !important;
+  font-family: var(--font-ui) !important;
+  font-weight: 700 !important;
+  font-size: 0.85rem !important;
+  letter-spacing: -0.02em !important;
+}
+.crypto-donation-section p {
+  color: var(--text-secondary) !important;
+  font-family: var(--font-code) !important;
+  font-size: 0.68rem !important;
+}
+.crypto-donation-section a {
+  background: var(--blue-faint) !important;
+  color: var(--blue-bright) !important;
+  border: 1px solid rgba(59,130,246,0.3) !important;
+  border-radius: 100px !important;
+  padding: 6px 16px !important;
+  font-family: var(--font-code) !important;
+  font-size: 0.65rem !important;
+  font-weight: 600 !important;
+  transition: all var(--transition-fast) !important;
+  box-shadow: none !important;
+}
+.crypto-donation-section a:hover {
+  background: rgba(59,130,246,0.15) !important;
+  border-color: var(--blue-bright) !important;
+}
+.crypto-donation-section > div {
+  background: var(--bg-deep) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+}
+.crypto-donation-section > div span {
+  color: var(--blue-bright) !important;
+  font-family: var(--font-code) !important;
+  font-size: 0.65rem !important;
+}
+.crypto-donation-section code {
+  background: var(--bg-void) !important;
+  color: var(--text-code) !important;
+  font-family: var(--font-code) !important;
+  font-size: 0.68rem !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 6px 8px !important;
+}
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
     body { background: var(--bg-void); color: var(--text-primary); font-family: var(--font-ui); min-height: 100vh; overflow-x: hidden; }
@@ -3138,6 +3197,19 @@ if (localStorage.getItem('astmize-intro-dismissed') === 'true') {
   if (introEl) introEl.classList.add('hidden');
 }
 </script>
+<div class="crypto-donation-section" style="background: #060913; border: 1px solid #00d2ff; padding: 12px; border-radius: 6px; text-align: center; margin: 15px auto; max-width: 380px; font-family: sans-serif; box-shadow: 0 0 8px rgba(0, 210, 255, 0.15);">
+    <h4 style="color: #00d2ff; margin: 0 0 5px 0; font-size: 14px;">🚀 Support Ibrahim (Astmize Developer)</h4>
+    <p style="color: #8fa0c0; font-size: 11px; margin: 0 0 10px 0; line-height: 1.4;">If this mobile-built tool saved your time, consider supporting via Crypto.</p>
+    
+    <a href="https://link.trustwallet.com/send?coin=195&address=TECVGakoR3jXi4wT8yJrMd5Tt1ZkjLn81Z&token_id=TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t" target="_blank" style="display: inline-block; background: #0b132b; color: #00d2ff; border: 1px solid #00d2ff; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 11px; box-shadow: 0 0 6px rgba(0, 210, 255, 0.2);">
+        📱 Open in Trust Wallet
+    </a>
+
+    <div style="margin-top: 8px; text-align: left; background: #0f172a; padding: 8px; border-radius: 4px; border: 1px solid #1e293b;">
+        <span style="color: #00d2ff; font-weight: bold; font-size: 10px;">USDT (Tron TRC20):</span>
+        <code style="display: block; color: #ffffff; word-break: break-all; background: #020617; padding: 4px; border-radius: 3px; margin-top: 2px; font-size: 10px;">TECVGakoR3jXi4wT8yJrMd5Tt1ZkjLn81Z</code>
+    </div>
+</div>
 
 </body>
 </html>
