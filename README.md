@@ -1,7 +1,5 @@
 <div align="center">
 
-<br/>
-
 ```
    █████╗ ███████╗████████╗███╗   ███╗██╗███████╗███████╗
   ██╔══██╗██╔════╝╚══██╔══╝████╗ ████║██║╚══███╔╝██╔════╝
@@ -11,51 +9,38 @@
   ╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝     ╚═╝╚═╝╚══════╝╚══════╝
 ```
 
-### ⚡ Python → C++ — AI-Powered Transpiler
+### Python → C++ — AI-Powered Transpiler
 
-[![Live](https://img.shields.io/badge/🌐_Live_Demo-Visit_Now-00e5ff?style=for-the-badge&labelColor=07080c)](https://thespacetimedebugger.github.io/Astmize/)
+[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-Visit_Now-00e5ff?style=for-the-badge&labelColor=07080c)](https://thespacetimedebugger.github.io/Astmize/)
 [![Product Hunt](https://img.shields.io/badge/Product_Hunt-Astmize-ff6154?style=for-the-badge&logo=producthunt&logoColor=white&labelColor=07080c)](https://www.producthunt.com/products/astmize-python-c-transpiler)
-[![API](https://img.shields.io/badge/API-v2.0.1-9b6dff?style=flat-square&labelColor=07080c)](https://astmize.onrender.com)
+[![API](https://img.shields.io/badge/API-v2.1.0-9b6dff?style=flat-square&labelColor=07080c)](https://astmize.onrender.com)
 [![License](https://img.shields.io/badge/License-MIT-00ff88?style=flat-square&labelColor=07080c)](LICENSE)
 [![Flask](https://img.shields.io/badge/Backend-Flask-lightgrey?style=flat-square&logo=flask&labelColor=07080c)](https://flask.palletsprojects.com)
 [![Deploy](https://img.shields.io/badge/Deploy-Render.com-46E3B7?style=flat-square&logo=render&labelColor=07080c)](https://render.com)
 [![Bilingual](https://img.shields.io/badge/UI-EN_|_عربي-ffaa00?style=flat-square&labelColor=07080c)](#)
 
-<br/>
-
-> **Write Python. Get C++. Powered by AI.**  
-> Astmize uses free AI models in sequence to intelligently translate your Python source into fast, compilable C++ — then lets you run, enhance, and revisit it live in the browser.
-
-<br/>
-
 </div>
 
 ---
 
-## 📦 Supported Versions
+## The Problem
 
-[![Python](https://img.shields.io/badge/Python-3.x-3776AB?style=flat-square&logo=python&logoColor=white&labelColor=07080c)](https://www.python.org/)
-[![C++](https://img.shields.io/badge/C++-11_|_17-00599C?style=flat-square&logo=cplusplus&logoColor=white&labelColor=07080c)](https://isocpp.org/)
-[![Status](https://img.shields.io/badge/Status-Active-00ff88?style=flat-square&labelColor=07080c)](#)
+Python is the language developers think in. C++ is the language performance demands.
 
-Astmize accepts **Python 3.x** source (type hints, f-strings, modern syntax) and transpiles it into clean, ready-to-compile **C++11 / C++17**.
+Rewriting Python to C++ by hand is slow, error-prone, and interrupts creative flow. Existing tools use regex-and-replace — they don't understand context, types, or idiomatic C++.
 
-| Input | Output | Notes |
-|---|---|---|
-| 🐍 **Python 3.x** | ⚡ **C++11 / C++17** | Idiomatic, standard-library-based output (`<vector>`, `<string>`, `<iostream>`, etc.) |
-| Type-hinted functions & variables | Strongly-typed C++ equivalents | AI infers types when hints are absent |
-| Core syntax (loops, functions, conditionals, list ops) | STL-based translations (`std::vector`, `std::max_element`, etc.) | Optimized for readability and compilation |
+**Astmize closes that gap.**
 
-> 🔍 **Keywords:** Python to C++ transpiler · AI-powered code optimization · AI code converter · C++11 / C++17 code generation · educational prototyping tool · learn C++ from Python
+> Paste Python. Get production-ready C++. Run it instantly in the browser — no setup, no compiler, no context switching.
 
 ---
 
-## ✨ What Makes Astmize Different
+## What It Does
 
-Most transpilers do regex-and-replace. Astmize sends your Python to an AI engine that **understands context, intent, and idiomatic C++** — then lets you run and enhance the result instantly without leaving the page.
+Astmize sends your Python source through an AI orchestration engine that understands **intent and context** — not just syntax. The output is clean, compilable C++ with proper STL usage, type inference, and optional AI enhancement.
 
 ```python
-# ✍️  You write this in Python
+# Input — Python 3.x
 def find_max(nums: list[int]) -> int:
     result: int = nums[0]
     for i in range(1, len(nums)):
@@ -67,16 +52,14 @@ print(find_max([3, 7, 2, 9, 1]))
 ```
 
 ```cpp
-// ⚡  Astmize generates this C++
+// Output — C++17 (Astmize)
 #include <iostream>
 #include <vector>
 
 int find_max(std::vector<int> nums) {
     int result = nums[0];
-    for (int i = 1; i < nums.size(); ++i) {
-        if (nums[i] > result) {
-            result = nums[i];
-        }
+    for (int i = 1; i < (int)nums.size(); ++i) {
+        if (nums[i] > result) result = nums[i];
     }
     return result;
 }
@@ -88,91 +71,105 @@ int main() {
 ```
 
 ```
-▶ Output: 9
+▶ Output: 9   ✓ Compiled & executed via GCC
 ```
 
 ---
 
-## 🚀 Features
+## Supported Versions
 
-| Feature | Details |
+| Input | Output |
 |---|---|
-| 🤖 **AI-Powered Translation** | Tries multiple free AI models in sequence for best results |
-| ✦ **AI Enhancement** | One-click C++ improvement — AI refactors and explains what it changed |
-| ▶ **Live C++ Execution** | Runs compiled C++ in the browser via [Wandbox](https://wandbox.org) (GCC) |
-| ⟳ **Conversion History** | Last 7 conversions saved locally — restore any previous session instantly |
-| 🔢 **Editor Stats** | Real-time line and character counter in the Python editor |
+| Python 3.x (type hints, f-strings, modern syntax) | C++11 / C++17 |
+
+Type annotations are preserved as strongly-typed C++ equivalents. When hints are absent, the AI infers types from context.
+
+---
+
+## Core Features
+
+| Feature | Description |
+|---|---|
+| 🤖 **AI Orchestration** | 8 free AI models queried in sequence — automatic fallback ensures availability |
+| 🔁 **AST Fallback Engine** | If all AI models are unavailable, a pure-Python AST transpiler handles conversion locally |
+| ✦ **AI Enhancement** | One-click C++ refactor — AI improves idioms, explains every change |
+| ▶ **Live Execution** | Compiles and runs generated C++ in the browser via Wandbox (GCC) |
+| ⟳ **Conversion History** | Last 7 sessions stored locally — restore any previous conversion instantly |
 | 🌐 **Bilingual UI** | Full English & Arabic interface with RTL support |
-| ⬇️ **Download Output** | Export your generated `.cpp` file instantly |
-| 📋 **Copy to Clipboard** | One-click copy of the generated C++ code |
-| ⚙️ **Editor Settings** | Font size, editor height, tab size, line numbers — all configurable |
+| ⬇️ **Multi-Format Export** | Download `.cpp`, copy as Markdown, or plain text |
+| 📊 **Complexity Indicator** | Real-time simple / moderate / complex estimate as you type |
+| ↔️ **Resizable Panels** | Drag to resize editors — layout ratio saved across sessions |
+| ⚙️ **Editor Settings** | Font size, tab size, line numbers — all configurable |
 | 🛡️ **Rate Limiting** | 60 req/min on `/convert`, 20 req/min on `/enhance` |
-| 📱 **Mobile Responsive** | Full tab-switcher layout for small screens |
-| 🌑 **Dark Cyber UI** | Built with a dark, minimal, zero-distraction aesthetic |
-| ⌨️ **Keyboard Shortcut** | `Ctrl+Enter` / `Cmd+Enter` to transpile instantly |
-| ❓ **Shortcuts Guide** | In-app modal listing every keyboard shortcut |
-| 📊 **Complexity Indicator** | Live "simple / moderate / complex" estimate as you type |
-| ↔️ **Resizable Panels** | Drag the divider to resize the Python/C++ editors — ratio remembered across visits |
-| ⤓ **Multi-Format Export** | Download `.cpp`, or copy as Markdown / plain text via the export dropdown |
-| 📲 **Installable PWA** | Add to home screen with offline caching via Service Worker |
-| 🍪 **Privacy Consent Banner** | Lightweight, dismissible cookie/consent notice |
+| 📱 **Mobile-First PWA** | Installable, offline-capable — full tab-switcher layout on small screens |
+| ⌨️ **Keyboard Shortcuts** | `Ctrl+Enter` to transpile · full shortcut reference in-app |
 
 ---
 
-## 🧠 How It Works
+## How It Works
 
 ```
-┌─────────────────┐      POST /convert       ┌──────────────────────┐
-│   Your Python   │ ────────────────────── ▶│   Flask Backend      │
-│   (Browser UI)  │                           │                      │
-└─────────────────┘                           │  Tries AI Model 1    │
-        │                                     │  → Model 2 (if busy) │
-        │         C++ + Warnings              │  → Model 3 …         │
-        │ ◀────────────────────────────────── │                      │
-        ▼                                     └──────────────────────┘
-┌─────────────────┐      POST /enhance        ┌──────────────────────┐
-│  Syntax-colored │ ────────────────────── ▶│  Qwen3 Coder (AI)    │
-│  C++ output     │ ◀─────────────────────── │  Refactor + Explain  │
-│                 │                           └──────────────────────┘
-│  [ ✦ Enhance ] │      POST to Wandbox      ┌──────────────────────┐
-│  [ ▶ Run     ] │ ────────────────────── ▶│  GCC Compiler (Live) │
-│                 │ ◀─────────────────────── │  stdout / stderr      │
-│  Console Output │                           └──────────────────────┘
-└─────────────────┘
+┌─────────────────┐    POST /convert     ┌──────────────────────────┐
+│   Python Input  │ ──────────────────▶ │     Flask Backend         │
+│   (Browser UI)  │                      │                           │
+└─────────────────┘                      │  Model 1 (Qwen3 Coder)   │
+        │                                │  → Model 2 (DeepSeek)    │
+        │    C++ + Warnings              │  → Model 3 … (×8 total)  │
+        │ ◀────────────────────────────  │  → AST Fallback Engine   │
+        ▼                                └──────────────────────────┘
+┌─────────────────┐    POST /enhance     ┌──────────────────────────┐
+│  C++ Output     │ ──────────────────▶ │  AI Refactor + Explain   │
+│  (Highlighted)  │ ◀────────────────── └──────────────────────────┘
+│                 │
+│  [ ✦ Enhance ] │    POST → Wandbox    ┌──────────────────────────┐
+│  [ ▶ Run     ] │ ──────────────────▶ │  GCC Compiler (Live)     │
+│  Console Output │ ◀────────────────── │  stdout / stderr         │
+└─────────────────┘                      └──────────────────────────┘
 ```
 
-1. Paste Python code into the editor
-2. Astmize sends it to the Flask backend
-3. The backend queries free AI models in sequence until one responds
-4. C++ is returned, syntax-highlighted, and displayed
-5. Optionally hit **✦ Enhance** to have AI refactor and improve the generated code
-6. Hit **▶ Run** to compile & execute it live via Wandbox
+**Reliability by design:** No single point of failure. Every conversion attempt cascades through 8 AI models before falling back to the deterministic AST engine — ensuring output is always returned.
 
 ---
 
-## 🏗️ Architecture
+## Output Reliability
+
+Astmize approaches correctness at multiple layers:
+
+| Layer | Mechanism |
+|---|---|
+| **Compilation check** | All output is immediately runnable via Wandbox (GCC) — errors surface in the console, not silently |
+| **AI fallback chain** | 8 models tried in sequence; the first valid compilable response is used |
+| **AST fallback** | Deterministic rule-based transpiler activates when AI is unavailable |
+| **Warning system** | Non-fatal translation issues are surfaced as inline warnings, not discarded |
+| **Enhancement pass** | Optional AI refactor further improves correctness and C++ idiom compliance |
+
+> **Note:** Astmize targets Python-to-C++ transpilation for prototyping, learning, and performance porting workflows. For safety-critical or production-compiled binaries, human review of the generated output is recommended — as with any code generation tool.
+
+---
+
+## Architecture
 
 ```
 astmize/
-├── app.py            # Flask API — AI orchestration & transpilation logic
-├── requirements.txt  # Production dependencies
+├── app.py            # Flask API — AI orchestration, AST fallback, rate limiting
 ├── index.html        # Full frontend (single-file, zero build step)
-├── Procfile          # Render/Heroku process definition
+├── requirements.txt  # Production dependencies
+├── Procfile          # Process definition (Render / Heroku)
 ├── LICENSE
 └── README.md
 ```
 
 **API Endpoints**
 
-| Method | Route | Description |
+| Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/` | Health check — returns service status |
-| `POST` | `/convert` | Accepts Python, returns AI-generated C++ |
-| `POST` | `/enhance` | Accepts C++, returns AI-improved version + explanation |
+| `GET` | `/` | Health check — returns service version and status |
+| `POST` | `/convert` | Accepts Python source, returns AI-generated C++ |
+| `POST` | `/enhance` | Accepts C++, returns AI-refactored version + explanation |
 
 ---
 
-## 📡 API Reference
+## API Reference
 
 ### `GET /`
 
@@ -180,7 +177,7 @@ astmize/
 {
   "service": "Astmize API",
   "status": "ok",
-  "version": "2.0.1"
+  "version": "2.1.0"
 }
 ```
 
@@ -196,32 +193,23 @@ Content-Type: application/json
 }
 ```
 
-**Success `200`**
+**Response `200`**
 ```json
 {
   "success": true,
-  "cpp_code": "#include <iostream>\n#include <string>\n\nvoid greet(std::string name) {\n    std::cout << \"Hello, \" << name << \"!\" << \"\\n\";\n}\n",
+  "cpp_code": "#include <iostream>\n#include <string>\n\nvoid greet(std::string name) {\n    std::cout << \"Hello, \" << name << \"!\\n\";\n}\n",
   "warnings": [],
   "error": null
 }
 ```
 
-**Error `500`**
-```json
-{
-  "success": false,
-  "cpp_code": "",
-  "warnings": [],
-  "error": "Failed to parse AI response. Please try again."
-}
-```
+**Error responses**
 
-**Rate Limited `429`**
-```json
-{
-  "error": "Rate limit exceeded. Please wait before retrying."
-}
-```
+| Code | Meaning |
+|---|---|
+| `429` | Rate limit exceeded |
+| `413` | Payload exceeds 64 KB limit |
+| `502` | All AI models unavailable (AST fallback also failed) |
 
 ### `POST /enhance`
 
@@ -235,28 +223,18 @@ Content-Type: application/json
 }
 ```
 
-**Success `200`**
+**Response `200`**
 ```json
 {
   "success": true,
   "enhanced_code": "#include <iostream>\n...",
-  "explanation": "Replaced raw loop with std::max_element, renamed variable for clarity.",
+  "explanation": "Replaced raw loop with std::max_element; renamed variable for clarity.",
   "error": null
 }
 ```
 
-**Rate Limited `429` / Payload Too Large `413`**
-```json
-{
-  "success": false,
-  "enhanced_code": "",
-  "explanation": "",
-  "error": "Code payload exceeds the 50 KB limit."
-}
-```
-
 <details>
-<summary><b>📬 Test with cURL / Python / Postman</b></summary>
+<summary><b>Test with cURL / Python / Postman</b></summary>
 
 **cURL**
 ```bash
@@ -278,7 +256,6 @@ curl -X POST https://astmize.onrender.com/enhance \
 ```python
 import requests
 
-# Convert
 resp = requests.post(
     "https://astmize.onrender.com/convert",
     json={"python_code": "for i in range(5):\n    print(i)"},
@@ -287,7 +264,6 @@ data = resp.json()
 if data["success"]:
     print(data["cpp_code"])
 
-# Enhance
 resp2 = requests.post(
     "https://astmize.onrender.com/enhance",
     json={"cpp_code": data["cpp_code"]},
@@ -295,17 +271,11 @@ resp2 = requests.post(
 print(resp2.json()["explanation"])
 ```
 
-**Postman**
-- Method: `POST`
-- URL: `https://astmize.onrender.com/convert`
-- Headers: `Content-Type: application/json`
-- Body → raw → JSON: `{ "python_code": "..." }`
-
 </details>
 
 ---
 
-## 🖥️ Local Development
+## Local Development
 
 ```bash
 # 1. Clone
@@ -316,25 +286,25 @@ cd Astmize
 python -m venv .venv
 source .venv/bin/activate    # Windows: .venv\Scripts\activate
 
-# 3. Install
+# 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Environment variables
+# 4. Set environment variables
 export OPENROUTER_API_KEY="your-openrouter-api-key"
 export FLASK_DEBUG=true
 
-# 5. Run
+# 5. Start server
 python app.py
-# → http://localhost:5000
+# API available at http://localhost:5000
 ```
 
-Then open `index.html` in your browser — no build step needed.
+Open `index.html` directly in your browser — no build step required.
 
-> **Getting an OpenRouter key:** Sign up free at [openrouter.ai](https://openrouter.ai) — the models Astmize uses are all on free tiers.
+> **OpenRouter key:** Free at [openrouter.ai](https://openrouter.ai) — all models Astmize uses are on free tiers.
 
 ---
 
-## ☁️ Deploy to Render
+## Deploy to Render
 
 1. Push to GitHub
 2. [render.com](https://render.com) → **New Web Service** → connect repo
@@ -342,78 +312,73 @@ Then open `index.html` in your browser — no build step needed.
 
 | Field | Value |
 |---|---|
-| **Environment** | Python 3 |
-| **Build Command** | `pip install -r requirements.txt` |
-| **Start Command** | `gunicorn app:app --workers 4 --bind 0.0.0.0:$PORT` |
+| Environment | Python 3 |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `gunicorn app:app --workers 4 --bind 0.0.0.0:$PORT` |
 
 4. Add `OPENROUTER_API_KEY` under **Environment Variables**
 
-> **Cold start note:** Render's free tier spins down after inactivity. The first request may take 30–90 seconds while the server wakes and finds an available AI model — the UI will notify you automatically.
+> **Cold start:** Render's free tier spins down after inactivity. The first request after a sleep period may take 30–90 seconds — the UI notifies users automatically.
 
 ---
 
-## 📋 Changelog
+## Changelog
 
 ### v2.1.0 — Current
-- 📦 **Supported Versions** section added — Python 3.x → C++11 / C++17 clarified up front
-- 📊 **Complexity Indicator** — real-time simple/moderate/complex estimate while typing
-- ↔️ **Resizable Panels** — drag to resize Python/C++ editors, with saved layout ratio
-- ⤓ **Export Dropdown** — download `.cpp` or copy as Markdown/plain text
-- ❓ **Keyboard Shortcuts Modal** — quick-reference guide accessible from the header
-- 📲 **PWA Support** — installable, offline-capable via Service Worker
-- 🍪 **Consent Banner** — added lightweight privacy notice
+- 🔁 **AST Fallback Engine** — deterministic transpiler activates when all AI models are unavailable
+- 📦 Python 3.x → C++11 / C++17 version matrix documented
+- 📊 Complexity Indicator — real-time simple / moderate / complex estimate
+- ↔️ Resizable Panels with saved layout ratio
+- ⤓ Export Dropdown — `.cpp`, Markdown, plain text
+- ❓ Keyboard Shortcuts Modal
+- 📲 PWA — installable with offline Service Worker
+- 🍪 Privacy Consent Banner
 
 ### v2.0.1
-- ✦ **AI Enhancement** — new `/enhance` endpoint integrated into the UI; one click refactors your C++ and explains what changed
-- ⟳ **Conversion History** — last 7 conversions stored in localStorage with one-click restore
-- 🔢 **Editor Stats Bar** — live line and character counter below the Python editor
-- 🐛 Fixed typo `Wandox` → `Wandbox` in console output
-- ⚡ Added favicon
+- ✦ AI Enhancement — `/enhance` endpoint with refactor + explanation
+- ⟳ Conversion History — last 7 sessions in localStorage
+- 🔢 Live editor stats (line + character counter)
+- 🐛 Fixed `program_message` → `program_output` (Wandbox stdout now displays correctly)
 
 ### v2.0.0
-- 🤖 Replaced pure AST engine with AI model orchestration via OpenRouter
-- 🔁 Multi-model fallback chain (Qwen3 Coder → DeepSeek → Nemotron → GPT-OSS → Gemma → Llama → Hermes)
-- 🛡️ Rate limiting (60 req/min) with bilingual 429 error messages
+- 🤖 Replaced pure AST engine with AI orchestration via OpenRouter
+- 🔁 8-model fallback chain
+- 🛡️ Rate limiting with bilingual error messages
 - ▶ Live C++ execution via Wandbox (GCC)
-- 📱 Mobile tab-switcher layout
-- ⚙️ Editor settings panel (font size, height, tab size, line numbers)
+- 📱 Mobile-first layout with tab switcher
 - 🌐 Full Arabic UI with RTL support
 
 ### v1.0.0
-- Initial release with Python AST engine
+- Initial release — pure Python AST transpiler engine
 - Flask backend, dark cyber frontend
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
-Contributions, issues, and feature requests are welcome!
+Contributions, issues, and feature requests are welcome.
 
-1. Fork the repo
-2. Create your branch: `git checkout -b feature/my-feature`
-3. Commit: `git commit -m 'feat: add my feature'`
-4. Push: `git push origin feature/my-feature`
+1. Fork the repository
+2. Create a branch: `git checkout -b feature/your-feature`
+3. Commit: `git commit -m 'feat: describe your change'`
+4. Push: `git push origin feature/your-feature`
 5. Open a Pull Request
 
-Please keep PRs focused and well-described. For major changes, open an issue first to discuss.
+For significant changes, open an issue first to align on approach.
 
 ---
 
-## 📬 Contact & Support
+## Contact
 
 **Astmize Studio** · Built by [Ibrahim El-Shami](https://www.linkedin.com/in/ibrahim-el-shami-63a960415)
 
-📧 [sydbrahim02@gmail.com](mailto:sydbrahim02@gmail.com)
-.
-🐦 [@AstmizeStudio](https://x.com/AstmizeStudio)
-.
-🚀 [Product Hunt](https://www.producthunt.com/products/astmize-python-c-transpiler)
+📧 [sydbrahim02@gmail.com](mailto:sydbrahim02@gmail.com) · 🐦 [@AstmizeStudio](https://x.com/AstmizeStudio) · 🚀 [Product Hunt](https://www.producthunt.com/products/astmize-python-c-transpiler)
 
-For bugs, feature requests, or general questions — email or open a GitHub issue.
+For bugs or feature requests — open a GitHub issue or send an email.
 
 ---
 
-## 📄 License
+## License
 
 MIT © [Astmize Studio](LICENSE)
 
@@ -421,11 +386,7 @@ MIT © [Astmize Studio](LICENSE)
 
 <div align="center">
 
-<br/>
-
-**If Astmize saved you time or impressed you, drop a ⭐ — it means the world and helps others discover the project.**
-
-<br/>
+*If Astmize saved you time, a ⭐ helps others discover the project.*
 
 *Built with ⚡ by Astmize Studio*
 
