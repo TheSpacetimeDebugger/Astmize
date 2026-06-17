@@ -1496,50 +1496,96 @@ const TRANSLATIONS = {
 const MODAL_CONTENT = {
   en: {
     privacy: `
-      <h3>Last Updated: 24 May 2026</h3>
-      <p>Astmize ("we", "our", or "the Service") is committed to protecting your privacy. This Privacy Policy explains how we handle information when you use Astmize.</p>
+      <h3>Last Updated: 17 June 2026</h3>
+      <p>Astmize ("we", "our", "us", or "the Service") is committed to protecting your privacy. This Privacy Policy explains what information we process when you use Astmize and the choices available to you.</p>
+
       <h3>1. Information We Collect</h3>
-      <p><strong>Code Submissions:</strong> When you submit Python code for transpilation, that code is transmitted to our backend API hosted on Render.com. We do not permanently store submitted code. Requests are processed in memory and discarded after generating a response.</p>
-      <p><strong>Usage Data:</strong> We may collect anonymous, aggregated usage statistics (e.g. number of requests, error rates) for the purpose of improving the service. This data does not identify individual users.</p>
-      <p><strong>Local Storage:</strong> We use your browser's localStorage solely to remember your language preference and cookie consent choice. No personally identifiable information is stored.</p>
+      <p><strong>Code Submissions:</strong> When you submit Python code for transpilation, that code is transmitted to our backend API hosted on Render.com and, for AI-based conversion, to OpenRouter's API. We do not permanently store submitted code. Requests are processed in memory and discarded after generating a response.</p>
+      <p><strong>Usage Data (Google Analytics):</strong> With your consent, we use <strong>Google Analytics</strong> to collect anonymized, aggregated usage data — such as page views, session duration, approximate geographic region, and device/browser type. IP addresses are truncated/anonymized before storage (<code>anonymize_ip</code>). This data is used solely to understand and improve the Service and does not, on its own, identify you personally. Google Analytics operates under Google's own privacy policy and may process data on servers located outside your country of residence.</p>
+      <p><strong>Local Storage:</strong> We use your browser's <code>localStorage</code> to remember your language preference, editor settings, conversion history (up to 7 recent sessions, stored only on your device), and your cookie consent choice. No personally identifiable information is stored in this manner.</p>
+
       <h3>2. Third-Party Services</h3>
-      <p>Our backend API is hosted on <strong>Render.com</strong>. By using Astmize, your code submissions are subject to Render's data processing terms. The conversion engine uses <strong>OpenRouter</strong> (Qwen3 Coder) to process your Python code — your submissions are subject to OpenRouter's privacy policy. We use <strong>Google Fonts</strong> to load typefaces; this may result in a request to Google's servers. No advertising networks or tracking pixels are used.</p>
+      <p>Our backend API is hosted on <strong>Render.com</strong>; your submissions are subject to Render's data processing terms. The conversion engine uses <strong>OpenRouter</strong> (and the AI models accessible through it) to process your Python code; your submissions are subject to OpenRouter's privacy policy and that of the underlying model provider. Code execution, where requested, is performed via <strong>Wandbox</strong>'s public compilation API. We use <strong>Google Fonts</strong> to load typefaces, which may generate a request to Google's servers. With your consent, we use <strong>Google Analytics</strong> as described above. We do not use advertising networks or third-party tracking/advertising pixels.</p>
+      <p><strong>Important — Do Not Submit Sensitive Data:</strong> Because submitted code is transmitted to and processed by the third-party infrastructure listed above (including Render.com, OpenRouter, the underlying AI model providers, and Wandbox), you must <strong>never</strong> paste passwords, API keys, access tokens, private keys, credentials, personal data of others, or any other confidential or sensitive information into the Service. Astmize has no control over how these third parties log, cache, or process data in transit, and we are not in a position to guarantee the confidentiality of anything submitted. Any exposure, leak, or misuse of sensitive data that you submit is your sole responsibility — see Section 8 of our Terms of Service for the corresponding contractual disclaimer.</p>
+
       <h3>3. Cookies & Consent</h3>
-      <p>We use only functional cookies necessary for the operation of the Service (language preference, consent status). We do not use advertising or analytics cookies without your consent.</p>
-      <h3>4. Data Retention</h3>
-      <p>Submitted code is not retained beyond the duration of a single API request. Preference data stored in localStorage remains until cleared by you.</p>
-      <h3>5. Your Rights</h3>
-      <p>You may clear all locally stored data at any time via your browser settings. For questions about data handling, contact us at: <a href="mailto:sydbrahim02@gmail.com">sydbrahim02@gmail.com</a></p>
-      <h3>6. Changes to This Policy</h3>
-      <p>We may update this policy from time to time. Continued use of the Service constitutes acceptance of the updated policy.</p>
+      <p>We distinguish between two categories of browser storage:</p>
+      <ul>
+        <li><strong>Strictly necessary / functional:</strong> language preference, editor settings, and your consent choice itself. These are required for the Service to function and do not require consent under applicable law.</li>
+        <li><strong>Analytics (non-essential):</strong> Google Analytics cookies/identifiers. These are <strong>not loaded or activated</strong> until you click "Accept" on the consent banner. If you click "Decline", no Analytics script is loaded and no Analytics cookie is set. You may withdraw consent at any time by clearing your browser's local storage/cookies for this site, which will cause the consent banner to reappear on your next visit.</li>
+      </ul>
+
+      <h3>4. Legal Basis for Processing (GDPR)</h3>
+      <p>Where the GDPR applies, our legal bases are: (a) <strong>consent</strong> (Art. 6(1)(a)) for Google Analytics and any non-essential cookies; (b) <strong>legitimate interest</strong> (Art. 6(1)(f)) for strictly necessary functional storage and for processing code submissions transiently to provide the Service you requested; and (c) <strong>contractual necessity</strong> (Art. 6(1)(b)) for operating the Service in accordance with these policies. You may withdraw consent at any time without affecting the lawfulness of processing carried out before withdrawal.</p>
+
+      <h3>5. Data Retention</h3>
+      <p>Submitted code is not retained beyond the duration of a single API request, except for conversion history that you choose to keep, which is stored exclusively in your own browser's <code>localStorage</code> and never transmitted to us. Aggregated, anonymized Analytics data is retained according to Google Analytics' default retention settings unless otherwise configured.</p>
+
+      <h3>6. Your Rights</h3>
+      <p>Depending on your jurisdiction, you may have the right to access, correct, delete, or restrict processing of your personal data, and to withdraw consent at any time. Since we do not maintain user accounts or persistent server-side personal data, most of these rights can be exercised directly by clearing your browser's local storage. For any other request or question regarding data handling, contact us at: <a href="mailto:sydbrahim02@gmail.com">sydbrahim02@gmail.com</a></p>
+
+      <h3>7. Children's Privacy</h3>
+      <p>The Service is not directed at children under 13. Users between 13 and 18 years of age may only use the Service under the supervision and with the consent of a parent or legal guardian, who shall be responsible for the minor's compliance with these policies. We do not knowingly collect personal data from children under 13; if we become aware that we have, we will take steps to delete it.</p>
+
+      <h3>8. Changes to This Policy</h3>
+      <p>We may update this policy from time to time. Material changes will be reflected by updating the "Last Updated" date above. Continued use of the Service after changes constitutes acceptance of the updated policy.</p>
     `,
     terms: `
-      <h3>Last Updated: 24 May 2026</h3>
-      <p>By accessing or using Astmize ("the Service"), you agree to be bound by these Terms of Service. Please read them carefully.</p>
-      <h3>1. Acceptance of Terms</h3>
-      <p>By using Astmize, you confirm that you are at least 13 years of age and accept these terms. If you do not agree, do not use the Service.</p>
+      <h3>Last Updated: 17 June 2026</h3>
+      <p>By accessing or using Astmize ("the Service"), you agree to be bound by these Terms of Service ("Terms"). Please read them carefully before using the Service. If you do not agree to these Terms, you must not use the Service.</p>
+
+      <h3>1. Acceptance of Terms &amp; Age Requirements</h3>
+      <p>By using Astmize, you confirm that you are at least 13 years of age. If you are between 13 and 18 years of age, you may only use the Service under the direct supervision and with the express consent of a parent or legal guardian, who agrees to be bound by these Terms on your behalf and assumes responsibility for your use of the Service. If you are under 13, you may not use the Service under any circumstances.</p>
+
       <h3>2. Description of Service</h3>
-      <p>Astmize is a free Python-to-C++ code transpilation tool powered by AI (Qwen3 Coder via OpenRouter). It is provided "as is" for educational and development purposes. Submitted code is sent to the OpenRouter API for processing and is not permanently stored.</p>
-      <h3>3. Acceptable Use</h3>
+      <p>Astmize is a free, AI-assisted Python-to-C++ code transpilation tool. Code you submit is transmitted to third-party infrastructure (including Render.com, OpenRouter, the AI models accessible through it, and, where requested, Wandbox's public compilation API) for processing, and is not permanently stored by us. The Service is provided strictly on an "as is" and "as available" basis for educational, experimental, and prototyping purposes.</p>
+
+      <h3>3. No Submission of Sensitive or Confidential Data</h3>
+      <p>You must <strong>not</strong> submit, paste, or otherwise transmit through the Service any passwords, API keys, access tokens, private cryptographic keys, credentials, personal data belonging to third parties, trade secrets, or any other confidential or sensitive information. Submitted code passes through third-party infrastructure (including OpenRouter and the underlying AI model providers) that is outside our control. <strong>You acknowledge and agree that any exposure, interception, leak, retention, or misuse of sensitive data that you choose to submit is your sole and exclusive responsibility</strong>, and Astmize disclaims all liability arising from such submissions.</p>
+
+      <h3>4. Acceptable Use</h3>
       <p>You agree <strong>not</strong> to use the Service to:</p>
       <ul>
         <li>Submit code containing malware, exploits, or harmful logic</li>
-        <li>Attempt to overload, attack, or disrupt the API servers</li>
-        <li>Submit copyrighted code you do not have rights to</li>
-        <li>Reverse-engineer or misuse the backend infrastructure</li>
+        <li>Attempt to overload, attack, probe, or disrupt the API servers or any connected third-party infrastructure</li>
+        <li>Submit copyrighted code you do not have the rights to submit</li>
+        <li>Reverse-engineer, scrape, or misuse the backend infrastructure</li>
+        <li>Submit any sensitive or confidential data as described in Section 3</li>
       </ul>
-      <h3>4. Rate Limiting</h3>
-      <p>The Service enforces a limit of <strong>60 requests per minute</strong> per IP address to protect server stability. Exceeding this limit will result in a temporary block. Please use the Service responsibly.</p>
-      <h3>5. Intellectual Property</h3>
-      <p>You retain all rights to the Python code you submit. Astmize does not claim ownership of user-submitted code. The Astmize application code and design are copyright © 2026 Astmize.</p>
-      <h3>6. Disclaimer of Warranties</h3>
-      <p>THE SERVICE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. WE DO NOT GUARANTEE THAT TRANSLATED C++ CODE IS CORRECT, COMPILABLE, OR FREE FROM ERRORS. USERS ARE RESPONSIBLE FOR REVIEWING AND TESTING ALL OUTPUT BEFORE USE IN PRODUCTION ENVIRONMENTS.</p>
-      <h3>7. Limitation of Liability</h3>
-      <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, ASTMIZE SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES ARISING FROM USE OF THE SERVICE.</p>
-      <h3>8. Governing Law</h3>
-      <p>These Terms are governed by applicable law. Any disputes shall be resolved through good-faith negotiation before pursuing formal legal action.</p>
-      <h3>9. Changes to Terms</h3>
-      <p>We reserve the right to modify these Terms at any time. Continued use of the Service after changes constitutes acceptance.</p>
+
+      <h3>5. Rate Limiting</h3>
+      <p>The Service enforces request-rate limits (currently up to 60 requests per minute per IP address on the conversion endpoint, with stricter limits on enhancement features) to protect server stability. Exceeding these limits will result in a temporary block. Please use the Service responsibly.</p>
+
+      <h3>6. Intellectual Property</h3>
+      <p>You retain all rights to the Python code you submit. Astmize does not claim ownership of user-submitted code. The Astmize application code, design, branding, and associated assets are copyright © 2026 Astmize. Nothing in these Terms grants you any rights to Astmize's trademarks, logos, or branding without prior written permission.</p>
+
+      <h3>7. AI-Generated Output Disclaimer</h3>
+      <p>The C++ code produced by the Service is generated by artificial intelligence models and/or automated transpilation logic, and is provided <strong>without any warranty as to its correctness, completeness, security, or fitness for any particular purpose</strong>. Specifically, and without limitation, you acknowledge that AI-generated output:</p>
+      <ul>
+        <li>May contain logical errors that do not match the behavior of your original Python code;</li>
+        <li>May not compile or run successfully in any given C++ environment or toolchain;</li>
+        <li>May contain security vulnerabilities, unsafe memory operations, or other defects;</li>
+        <li>Has not been audited, reviewed, or certified by Astmize for correctness or security.</li>
+      </ul>
+      <p>You are solely and entirely responsible for independently reviewing, testing, auditing, and validating any generated code before using, compiling, deploying, or distributing it in any environment — including, without limitation, any development, staging, or production environment. Under no circumstances should AI-generated output from this Service be deployed to a production or safety-critical system without full independent human review.</p>
+
+      <h3>8. Disclaimer of Warranties</h3>
+      <p>THE SERVICE AND ALL OUTPUT GENERATED BY IT ARE PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTIES OF ANY KIND, WHETHER EXPRESS, IMPLIED, OR STATUTORY, INCLUDING WITHOUT LIMITATION WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, OR ACCURACY. WE DO NOT GUARANTEE THAT TRANSLATED C++ CODE IS CORRECT, COMPILABLE, SECURE, OR FREE FROM ERRORS. USERS ARE SOLELY RESPONSIBLE FOR REVIEWING AND TESTING ALL OUTPUT BEFORE ANY USE.</p>
+
+      <h3>9. Limitation of Liability</h3>
+      <p>TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, ASTMIZE, ITS OWNER, AND ITS AFFILIATES SHALL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES — INCLUDING WITHOUT LIMITATION LOSS OF DATA, LOSS OF PROFITS, BUSINESS INTERRUPTION, OR ANY DAMAGE ARISING FROM (A) USE OR INABILITY TO USE THE SERVICE, (B) ANY AI-GENERATED OUTPUT, (C) ANY SUBMISSION OF SENSITIVE OR CONFIDENTIAL DATA BY YOU, OR (D) ANY THIRD-PARTY INFRASTRUCTURE USED TO PROVIDE THE SERVICE — EVEN IF ASTMIZE HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. IN ANY EVENT, ASTMIZE'S TOTAL AGGREGATE LIABILITY FOR ANY CLAIM ARISING OUT OF OR RELATING TO THE SERVICE SHALL NOT EXCEED THE GREATER OF (I) THE AMOUNT YOU PAID TO ASTMIZE IN THE TWELVE (12) MONTHS PRECEDING THE CLAIM, OR (II) ZERO, AS THE SERVICE IS PROVIDED FREE OF CHARGE.</p>
+
+      <h3>10. Indemnification</h3>
+      <p>You agree to indemnify, defend, and hold harmless Astmize and its owner from and against any claims, damages, losses, liabilities, costs, and expenses (including reasonable legal fees) arising out of or related to: (a) your use or misuse of the Service; (b) your submission of any sensitive, confidential, infringing, or unlawful content; or (c) your violation of these Terms.</p>
+
+      <h3>11. Governing Law &amp; Jurisdiction</h3>
+      <p>These Terms, and any dispute or claim arising out of or in connection with them or the Service (including non-contractual disputes or claims), shall be governed by and construed in accordance with the <strong>laws of the Republic of Turkey</strong>, without regard to its conflict-of-law provisions. You and Astmize irrevocably agree that the courts of the <strong>Republic of Turkey</strong> shall have exclusive jurisdiction to settle any dispute or claim arising out of or in connection with these Terms or the Service.</p>
+
+      <h3>12. Severability</h3>
+      <p>If any provision of these Terms is found to be unenforceable or invalid under applicable law, that provision will be limited or eliminated to the minimum extent necessary so that the remaining Terms remain in full force and effect.</p>
+
+      <h3>13. Changes to Terms</h3>
+      <p>We reserve the right to modify these Terms at any time, at our sole discretion. Material changes will be reflected by updating the "Last Updated" date above. Continued use of the Service after such changes constitutes your acceptance of the revised Terms.</p>
     `,
     about: `
       <h3>What is Astmize?</h3>
@@ -1569,50 +1615,96 @@ const MODAL_CONTENT = {
   },
   ar: {
     privacy: `
-      <h3>آخر تحديث: 24 مايو 2026</h3>
-      <p>تلتزم Astmize بحماية خصوصيتك. تشرح سياسة الخصوصية هذه كيفية التعامل مع المعلومات عند استخدام الخدمة.</p>
+      <h3>آخر تحديث: 17 يونيو 2026</h3>
+      <p>تلتزم Astmize ("نحن" أو "الخدمة") بحماية خصوصيتك. تشرح سياسة الخصوصية هذه ما نعالجه من معلومات عند استخدامك للخدمة والخيارات المتاحة لك.</p>
+
       <h3>١. المعلومات التي نجمعها</h3>
-      <p><strong>الكود المُرسَل:</strong> عند إرسال كود Python للتحويل، يُنقَل إلى خادم API على Render.com. لا نخزّن الكود المُرسَل بشكل دائم — يُعالَج في الذاكرة ويُحذف فور إرسال الاستجابة.</p>
-      <p><strong>بيانات الاستخدام:</strong> قد نجمع إحصائيات استخدام مجهولة الهوية (عدد الطلبات، معدلات الخطأ) لتحسين الخدمة. لا تُحدِّد هذه البيانات المستخدمين بشكل شخصي.</p>
-      <p><strong>التخزين المحلي:</strong> نستخدم localStorage في المتصفح فقط لحفظ تفضيل اللغة وحالة الموافقة على ملفات تعريف الارتباط. لا تُخزَّن أي معلومات تعريفية شخصية.</p>
+      <p><strong>الكود المُرسَل:</strong> عند إرسال كود Python للتحويل، يُنقَل إلى خادم API الخاص بنا على Render.com، وكذلك إلى OpenRouter لمعالجة التحويل بالذكاء الاصطناعي. لا نخزّن الكود المُرسَل بشكل دائم — يُعالَج في الذاكرة ويُحذف فور إرسال الاستجابة.</p>
+      <p><strong>بيانات الاستخدام (Google Analytics):</strong> بموافقتك، نستخدم <strong>Google Analytics</strong> لجمع بيانات استخدام مجهولة الهوية ومجمّعة — مثل عدد الزيارات، مدة الجلسة، المنطقة الجغرافية التقريبية، ونوع الجهاز/المتصفح. تُقطَّع عناوين IP أو تُجهَّل قبل تخزينها (anonymize_ip). تُستخدَم هذه البيانات فقط لفهم الخدمة وتحسينها، ولا تُحدِّد هويتك الشخصية بمفردها. تعمل Google Analytics وفق سياسة خصوصية Google الخاصة بها، وقد تُعالَج البيانات على خوادم خارج بلد إقامتك.</p>
+      <p><strong>التخزين المحلي:</strong> نستخدم localStorage في متصفحك لحفظ تفضيل اللغة، إعدادات المحرر، سجل التحويلات (آخر 7 جلسات، محفوظة على جهازك فقط)، وحالة موافقتك على ملفات تعريف الارتباط. لا تُخزَّن أي معلومات تعريفية شخصية بهذه الطريقة.</p>
+
       <h3>٢. خدمات الطرف الثالث</h3>
-      <p>يستضيف <strong>Render.com</strong> خادم API الخاص بنا. باستخدامك Astmize، تخضع إرسالاتك لشروط معالجة بيانات Render. يستخدم محرك التحويل <strong>OpenRouter</strong> (Qwen3 Coder) لمعالجة كودك — تخضع إرسالاتك أيضاً لسياسة خصوصية OpenRouter. نستخدم <strong>خطوط Google</strong> لتحميل الخطوط، مما قد يُنشئ طلبات لخوادم Google. لا تُستخدَم شبكات الإعلانات أو بكسلات التتبع.</p>
+      <p>يستضيف <strong>Render.com</strong> خادم API الخاص بنا؛ تخضع إرسالاتك لشروط معالجة بيانات Render. يستخدم محرك التحويل <strong>OpenRouter</strong> (والنماذج المتاحة عبره) لمعالجة كودك؛ تخضع إرسالاتك أيضاً لسياسة خصوصية OpenRouter ومزوّد النموذج الأساسي. يتم تشغيل الكود، عند الطلب، عبر واجهة <strong>Wandbox</strong> العامة للتجميع. نستخدم <strong>خطوط Google</strong> لتحميل الخطوط، مما قد يُنشئ طلباً لخوادم Google. بموافقتك، نستخدم <strong>Google Analytics</strong> كما هو موضح أعلاه. لا تُستخدَم شبكات إعلانية أو بكسلات تتبع من أي نوع.</p>
+      <p><strong>تنبيه مهم — لا ترسل بيانات حساسة:</strong> بما أن الكود المُرسَل يمر عبر البنية التحتية لأطراف ثالثة المذكورة أعلاه (بما فيها Render.com وOpenRouter ومزوّدي النماذج وWandbox)، يجب عليك <strong>عدم</strong> إرسال أي كلمات مرور، مفاتيح API، رموز وصول، مفاتيح تشفير خاصة، بيانات اعتماد، بيانات شخصية تخص أطراف أخرى، أو أي معلومات سرية أخرى عبر الخدمة. لا تتحكم Astmize في كيفية تسجيل أو تخزين أو معالجة هذه الأطراف الثالثة للبيانات أثناء النقل، ولا يمكننا ضمان سرية أي شيء يتم إرساله. <strong>أي تسريب أو اعتراض أو سوء استخدام لبيانات حساسة تختار إرسالها هو مسؤوليتك الكاملة والوحيدة</strong> — راجع البند الثالث من شروط الخدمة لمزيد من التفاصيل.</p>
+
       <h3>٣. ملفات تعريف الارتباط والموافقة</h3>
-      <p>نستخدم فقط ملفات تعريف الارتباط الوظيفية الضرورية (تفضيل اللغة، حالة الموافقة). لا نستخدم ملفات تعريف إعلانية أو تحليلية دون موافقتك.</p>
-      <h3>٤. الاحتفاظ بالبيانات</h3>
-      <p>لا يُحتفَظ بالكود المُرسَل بعد انتهاء طلب API المفرد. تبقى بيانات التفضيل في localStorage حتى تحذفها بنفسك.</p>
-      <h3>٥. حقوقك</h3>
-      <p>يمكنك مسح جميع البيانات المخزنة محلياً في أي وقت عبر إعدادات المتصفح. للاستفسار: <a href="mailto:sydbrahim02@gmail.com">sydbrahim02@gmail.com</a></p>
-      <h3>٦. التغييرات على السياسة</h3>
-      <p>قد نحدّث هذه السياسة من وقت لآخر. يُعدّ الاستمرار في استخدام الخدمة قبولاً للسياسة المحدّثة.</p>
+      <p>نُفرّق بين فئتين من التخزين في المتصفح:</p>
+      <ul>
+        <li><strong>ضرورية / وظيفية:</strong> تفضيل اللغة، إعدادات المحرر، وحالة موافقتك نفسها. هذه ضرورية لعمل الخدمة ولا تتطلب موافقة بموجب القانون المعمول به.</li>
+        <li><strong>تحليلية (غير ضرورية):</strong> ملفات تعريف ارتباط ومعرّفات Google Analytics. <strong>لا تُحمَّل أو تُفعَّل</strong> إلا بعد ضغطك على "قبول" في شعار الموافقة. إذا ضغطت "رفض"، لن يتم تحميل أي سكربت تحليلي ولن تُحفَظ أي ملفات تعريف ارتباط تحليلية. يمكنك سحب موافقتك في أي وقت بمسح بيانات الموقع المحلية من متصفحك، مما يُعيد ظهور شعار الموافقة في زيارتك القادمة.</li>
+      </ul>
+
+      <h3>٤. الأساس القانوني للمعالجة (GDPR)</h3>
+      <p>في حال انطباق اللائحة الأوروبية العامة لحماية البيانات (GDPR)، فإن الأساس القانوني لدينا هو: (أ) <strong>الموافقة</strong> (المادة 6(1)(أ)) لخدمة Google Analytics وأي ملفات تعريف ارتباط غير ضرورية؛ (ب) <strong>المصلحة المشروعة</strong> (المادة 6(1)(و)) للتخزين الوظيفي الضروري ولمعالجة الكود المُرسَل بشكل مؤقت لتقديم الخدمة التي طلبتها؛ و(ج) <strong>الضرورة التعاقدية</strong> (المادة 6(1)(ب)) لتشغيل الخدمة وفقاً لهذه السياسات. يمكنك سحب موافقتك في أي وقت دون التأثير على مشروعية المعالجة التي تمت قبل السحب.</p>
+
+      <h3>٥. الاحتفاظ بالبيانات</h3>
+      <p>لا يُحتفَظ بالكود المُرسَل بعد انتهاء طلب API المفرد، باستثناء سجل التحويلات الذي تختار الاحتفاظ به، والذي يُخزَّن فقط في localStorage الخاص بمتصفحك ولا يُنقَل إلينا أبداً. تُحتفَظ بيانات Google Analytics المجمّعة والمجهّلة وفق إعدادات الاحتفاظ الافتراضية لـ Google Analytics ما لم يُحدَّد خلاف ذلك.</p>
+
+      <h3>٦. حقوقك</h3>
+      <p>اعتماداً على نطاقك القانوني، قد يكون لديك الحق في الوصول إلى بياناتك الشخصية أو تصحيحها أو حذفها أو تقييد معالجتها، وسحب موافقتك في أي وقت. بما أننا لا نحتفظ بحسابات مستخدمين أو بيانات شخصية دائمة على الخادم، يمكن ممارسة معظم هذه الحقوق مباشرة بمسح بيانات متصفحك المحلية. لأي طلب أو استفسار آخر بخصوص التعامل مع البيانات: <a href="mailto:sydbrahim02@gmail.com">sydbrahim02@gmail.com</a></p>
+
+      <h3>٧. خصوصية القاصرين</h3>
+      <p>الخدمة غير موجهة للأطفال تحت 13 عاماً. يجوز للمستخدمين بين 13 و18 عاماً استخدام الخدمة فقط تحت إشراف وموافقة صريحة من ولي الأمر أو الوصي القانوني، والذي يتحمل المسؤولية عن امتثال القاصر لهذه السياسات. لا نجمع عن قصد بيانات شخصية من أطفال تحت 13 عاماً؛ وإذا علمنا بحدوث ذلك، سنتخذ خطوات لحذفها.</p>
+
+      <h3>٨. التغييرات على السياسة</h3>
+      <p>قد نحدّث هذه السياسة من وقت لآخر. ستُعكَس التغييرات الجوهرية بتحديث تاريخ "آخر تحديث" أعلاه. يُعدّ الاستمرار في استخدام الخدمة بعد التغييرات قبولاً للسياسة المحدّثة.</p>
     `,
     terms: `
-      <h3>آخر تحديث: 24 مايو 2026</h3>
-      <p>باستخدامك Astmize ("الخدمة")، فإنك توافق على الالتزام بشروط الخدمة هذه. يرجى قراءتها بعناية.</p>
-      <h3>١. قبول الشروط</h3>
-      <p>باستخدام Astmize، تؤكد أن عمرك لا يقل عن 13 عاماً وأنك تقبل هذه الشروط. إن لم توافق، لا تستخدم الخدمة.</p>
+      <h3>آخر تحديث: 17 يونيو 2026</h3>
+      <p>باستخدامك Astmize ("الخدمة")، فإنك توافق على الالتزام بشروط الخدمة هذه ("الشروط"). يرجى قراءتها بعناية قبل استخدام الخدمة. إن لم توافق على هذه الشروط، يجب عليك عدم استخدام الخدمة.</p>
+
+      <h3>١. قبول الشروط ومتطلبات العمر</h3>
+      <p>باستخدام Astmize، تؤكد أن عمرك لا يقل عن 13 عاماً. إذا كان عمرك بين 13 و18 عاماً، يجوز لك استخدام الخدمة فقط تحت إشراف مباشر وبموافقة صريحة من ولي الأمر أو الوصي القانوني، والذي يوافق على الالتزام بهذه الشروط نيابةً عنك ويتحمل المسؤولية عن استخدامك للخدمة. إذا كان عمرك أقل من 13 عاماً، لا يجوز لك استخدام الخدمة تحت أي ظرف.</p>
+
       <h3>٢. وصف الخدمة</h3>
-      <p>Astmize أداة مجانية لتحويل كود Python إلى C++ مدعومة بالذكاء الاصطناعي (Qwen3 Coder عبر OpenRouter). تُقدَّم "كما هي" للأغراض التعليمية والتطويرية. يُرسَل الكود إلى OpenRouter API للمعالجة ولا يُخزَّن بشكل دائم.</p>
-      <h3>٣. الاستخدام المقبول</h3>
+      <p>Astmize أداة مجانية لتحويل كود Python إلى C++ بمساعدة الذكاء الاصطناعي. يُنقَل الكود الذي ترسله إلى بنية تحتية لأطراف ثالثة (بما فيها Render.com وOpenRouter والنماذج المتاحة عبره، وعند الطلب، واجهة Wandbox العامة للتجميع) للمعالجة، ولا نخزّنه بشكل دائم. تُقدَّم الخدمة "كما هي" و"كما هي متاحة" بشكل صارم لأغراض تعليمية وتجريبية وأولية فقط.</p>
+
+      <h3>٣. عدم إرسال بيانات حساسة أو سرية</h3>
+      <p>يجب عليك <strong>عدم</strong> إرسال أو لصق أي كلمات مرور، مفاتيح API، رموز وصول، مفاتيح تشفير خاصة، بيانات اعتماد، بيانات شخصية تخص أطرافاً أخرى، أسرار تجارية، أو أي معلومات سرية أو حساسة أخرى عبر الخدمة. يمر الكود المُرسَل عبر بنية تحتية لأطراف ثالثة (بما فيها OpenRouter ومزوّدي النماذج) خارج نطاق سيطرتنا. <strong>تقر وتوافق على أن أي تسريب، اعتراض، احتفاظ، أو سوء استخدام لبيانات حساسة تختار إرسالها هو مسؤوليتك الكاملة والوحيدة</strong>، وتُعلن Astmize براءتها من أي مسؤولية ناتجة عن هذه الإرسالات.</p>
+
+      <h3>٤. الاستخدام المقبول</h3>
       <p>توافق على <strong>عدم</strong> استخدام الخدمة لـ:</p>
       <ul>
-        <li>إرسال كود يحتوي على برامج ضارة أو ثغرات</li>
-        <li>محاولة تعطيل أو مهاجمة خوادم API</li>
+        <li>إرسال كود يحتوي على برامج ضارة، ثغرات، أو منطق ضار</li>
+        <li>محاولة إغراق أو مهاجمة أو تعطيل خوادم API أو أي بنية تحتية لأطراف ثالثة مرتبطة</li>
         <li>إرسال كود محمي بحقوق ملكية لا تملك حقوقه</li>
-        <li>الهندسة العكسية أو إساءة استخدام البنية التحتية</li>
+        <li>الهندسة العكسية، الاستخلاص الآلي، أو إساءة استخدام البنية التحتية</li>
+        <li>إرسال أي بيانات حساسة أو سرية كما هو موضح في البند الثالث</li>
       </ul>
-      <h3>٤. حدود معدل الطلبات</h3>
-      <p>تفرض الخدمة حداً أقصى يبلغ <strong>60 طلباً في الدقيقة</strong> لكل عنوان IP لحماية استقرار الخادم. تجاوز هذا الحد سيؤدي إلى حجب مؤقت. يرجى استخدام الخدمة بمسؤولية.</p>
-      <h3>٥. الملكية الفكرية</h3>
-      <p>تحتفظ بجميع حقوق كود Python الذي ترسله. لا تدّعي Astmize ملكية الكود المُرسَل من المستخدمين. تصميم وكود تطبيق Astmize محمي بحقوق الملكية © 2026 Astmize.</p>
-      <h3>٦. إخلاء المسؤولية</h3>
-      <p>تُقدَّم الخدمة "كما هي" دون أي ضمان. لا نضمن أن كود C++ المُحوَّل صحيح أو قابل للتجميع. المستخدمون مسؤولون عن مراجعة واختبار جميع المُخرَجات قبل استخدامها في بيئات الإنتاج.</p>
-      <h3>٧. تحديد المسؤولية</h3>
-      <p>لن تكون Astmize مسؤولة عن أي أضرار غير مباشرة أو عرضية ناتجة عن استخدام الخدمة، بالقدر الأقصى المسموح به قانوناً.</p>
-      <h3>٨. القانون الحاكم</h3>
-      <p>تخضع هذه الشروط للقانون المعمول به. تُحَلّ أي نزاعات بحسن نية قبل اتخاذ إجراءات قانونية رسمية.</p>
-      <h3>٩. التغييرات على الشروط</h3>
-      <p>نحتفظ بالحق في تعديل هذه الشروط في أي وقت. يُعدّ الاستمرار في استخدام الخدمة قبولاً للتغييرات.</p>
+
+      <h3>٥. حدود معدل الطلبات</h3>
+      <p>تفرض الخدمة حدوداً لمعدل الطلبات (حالياً حتى 60 طلباً في الدقيقة لكل عنوان IP على نقطة التحويل، بحدود أكثر صرامة على ميزات التحسين) لحماية استقرار الخادم. تجاوز هذه الحدود سيؤدي إلى حجب مؤقت. يرجى استخدام الخدمة بمسؤولية.</p>
+
+      <h3>٦. الملكية الفكرية</h3>
+      <p>تحتفظ بجميع حقوق كود Python الذي ترسله. لا تدّعي Astmize ملكية الكود المُرسَل من المستخدمين. تصميم وكود تطبيق Astmize والعلامة التجارية والأصول المرتبطة محمية بحقوق الملكية © 2026 Astmize. لا تمنحك هذه الشروط أي حقوق في علامات Astmize التجارية أو شعاراتها دون إذن خطي مسبق.</p>
+
+      <h3>٧. إخلاء المسؤولية عن مُخرَجات الذكاء الاصطناعي</h3>
+      <p>يُنتَج كود C++ الذي تُولّده الخدمة بواسطة نماذج ذكاء اصطناعي و/أو منطق تحويل آلي، ويُقدَّم <strong>دون أي ضمان بشأن صحته، اكتماله، أمانه، أو ملاءمته لأي غرض معين</strong>. على وجه التحديد، وبدون حصر، تقر بأن مُخرَجات الذكاء الاصطناعي:</p>
+      <ul>
+        <li>قد تحتوي على أخطاء منطقية لا تطابق سلوك كود Python الأصلي؛</li>
+        <li>قد لا تُجمَّع أو تعمل بنجاح في أي بيئة أو سلسلة أدوات C++ معينة؛</li>
+        <li>قد تحتوي على ثغرات أمنية، عمليات ذاكرة غير آمنة، أو عيوب أخرى؛</li>
+        <li>لم تُراجَع أو تُدقَّق أو تُصادَق عليها من قِبَل Astmize من ناحية الصحة أو الأمان.</li>
+      </ul>
+      <p>تتحمل وحدك المسؤولية الكاملة عن مراجعة، اختبار، تدقيق، والتحقق من أي كود مُولَّد بشكل مستقل قبل استخدامه، تجميعه، نشره، أو توزيعه في أي بيئة — بما في ذلك، دون حصر، أي بيئة تطوير أو اختبار أو إنتاج. تحت أي ظرف، لا يجب نشر مُخرَجات الذكاء الاصطناعي من هذه الخدمة في نظام إنتاج أو نظام حرج للسلامة دون مراجعة بشرية مستقلة كاملة.</p>
+
+      <h3>٨. إخلاء الضمانات</h3>
+      <p>تُقدَّم الخدمة وجميع مُخرَجاتها "كما هي" و"كما هي متاحة"، دون أي ضمانات من أي نوع، صريحة أو ضمنية أو قانونية، بما في ذلك دون حصر ضمانات القابلية للتسويق، الملاءمة لغرض معين، عدم انتهاك الحقوق، أو الدقة. لا نضمن أن كود C++ المُحوَّل صحيح، قابل للتجميع، آمن، أو خالٍ من الأخطاء. يتحمل المستخدمون وحدهم مسؤولية مراجعة واختبار جميع المُخرَجات قبل أي استخدام.</p>
+
+      <h3>٩. تحديد المسؤولية</h3>
+      <p>بالقدر الأقصى الذي يسمح به القانون المعمول به، لن تكون Astmize ومالكها وشركاتها التابعة مسؤولة عن أي أضرار مباشرة، غير مباشرة، عرضية، خاصة، تبعية، أو تعويضية — بما في ذلك دون حصر فقدان البيانات، فقدان الأرباح، انقطاع الأعمال، أو أي ضرر ناتج عن (أ) استخدام أو عدم القدرة على استخدام الخدمة، (ب) أي مُخرَجات ذكاء اصطناعي، (ج) إرسالك لأي بيانات حساسة أو سرية، أو (د) أي بنية تحتية لطرف ثالث تُستخدَم لتقديم الخدمة — حتى إذا تم إخطار Astmize بإمكانية وقوع هذه الأضرار. في جميع الأحوال، لن تتجاوز المسؤولية الإجمالية لـ Astmize عن أي مطالبة ناشئة عن الخدمة المبلغ الأكبر بين (1) ما دفعته لـ Astmize خلال الاثني عشر شهراً السابقة للمطالبة، أو (2) صفر، باعتبار أن الخدمة تُقدَّم مجاناً.</p>
+
+      <h3>١٠. التعويض</h3>
+      <p>توافق على تعويض Astmize ومالكها والدفاع عنهما وحمايتهما من أي مطالبات، أضرار، خسائر، التزامات، تكاليف، ونفقات (بما فيها أتعاب المحاماة المعقولة) ناشئة عن أو متعلقة بـ: (أ) استخدامك أو سوء استخدامك للخدمة؛ (ب) إرسالك لأي محتوى حساس، سري، منتهك للحقوق، أو غير قانوني؛ أو (ج) مخالفتك لهذه الشروط.</p>
+
+      <h3>١١. القانون الحاكم والاختصاص القضائي</h3>
+      <p>تخضع هذه الشروط، وأي نزاع أو مطالبة ناشئة عنها أو متعلقة بها أو بالخدمة (بما فيها النزاعات أو المطالبات غير التعاقدية)، لقوانين <strong>جمهورية تركيا</strong> وتُفسَّر وفقاً لها، بصرف النظر عن أحكام تنازع القوانين فيها. توافقان أنت وAstmize بشكل لا رجعة فيه على أن تكون لمحاكم <strong>جمهورية تركيا</strong> الولاية القضائية الحصرية للفصل في أي نزاع أو مطالبة ناشئة عن هذه الشروط أو الخدمة.</p>
+
+      <h3>١٢. قابلية الفصل</h3>
+      <p>إذا تبيّن أن أحد بنود هذه الشروط غير قابل للتنفيذ أو غير صالح بموجب القانون المعمول به، يُحَدّ ذلك البند أو يُحذَف بالقدر الأدنى اللازم لضمان استمرار باقي الشروط بكامل قوتها ونفاذها.</p>
+
+      <h3>١٣. التغييرات على الشروط</h3>
+      <p>نحتفظ بالحق في تعديل هذه الشروط في أي وقت وبناءً على تقديرنا الخاص. ستُعكَس التغييرات الجوهرية بتحديث تاريخ "آخر تحديث" أعلاه. يُعدّ الاستمرار في استخدام الخدمة بعد هذه التغييرات قبولاً للشروط المُعدَّلة.</p>
     `,
     about: `
       <h3>ما هو Astmize؟</h3>
@@ -1708,9 +1800,9 @@ function updateConsentText() {
   const el = document.getElementById('consent-text');
   if (!el) return;
   if (currentLang === 'ar') {
-    el.innerHTML = 'نستخدم ملفات تعريف الارتباط الوظيفية لتذكر تفضيلاتك. بالنقر على "قبول الكل"، توافق على <a onclick="openModal(\'privacy\')">سياسة الخصوصية</a> و<a onclick="openModal(\'terms\')">شروط الخدمة</a>.';
+    el.innerHTML = 'نستخدم ملفات تعريف ارتباط وظيفية ضرورية لعمل الخدمة. بموافقتك على "قبول الكل"، سنُفعّل أيضاً Google Analytics لجمع بيانات استخدام مجهولة الهوية تساعدنا على تحسين الخدمة. راجع <a onclick="openModal(\'privacy\')">سياسة الخصوصية</a> و<a onclick="openModal(\'terms\')">شروط الخدمة</a> لمزيد من التفاصيل.';
   } else {
-    el.innerHTML = 'We use functional cookies to remember your preferences. By clicking "Accept All", you agree to our <a onclick="openModal(\'privacy\')">Privacy Policy</a> and <a onclick="openModal(\'terms\')">Terms of Service</a>.';
+    el.innerHTML = 'We use strictly necessary functional cookies to run the Service. If you click "Accept All", we will also enable Google Analytics to collect anonymized usage data that helps us improve the Service. See our <a onclick="openModal(\'privacy\')">Privacy Policy</a> and <a onclick="openModal(\'terms\')">Terms of Service</a> for details.';
   }
 }
 
@@ -1733,16 +1825,54 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// ─── Google Analytics (Consent-Gated) ──────────────────────────────────────────
+// GA is NEVER loaded until the user explicitly accepts the consent banner.
+// This satisfies GDPR's "prior consent" requirement for non-essential cookies.
+const GA_MEASUREMENT_ID = 'G-1SBQ8NEPZE';
+let gaLoaded = false;
+
+function loadGoogleAnalytics() {
+  if (gaLoaded) return;
+  gaLoaded = true;
+  const script = document.createElement('script');
+  script.async = true;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
+  document.head.appendChild(script);
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function () { window.dataLayer.push(arguments); };
+  window.gtag('js', new Date());
+  window.gtag('config', GA_MEASUREMENT_ID, {
+    anonymize_ip: true,           // GDPR: strips last IP octet before storage
+    allow_ad_personalization_signals: false,
+  });
+}
+
+function revokeGoogleAnalytics() {
+  // If the user later declines, disable future GA collection for this property.
+  window[`ga-disable-${GA_MEASUREMENT_ID}`] = true;
+}
+
 // ─── Consent ──────────────────────────────────────────────────────────────────
 function handleConsent(accepted) {
   localStorage.setItem('astmize-consent', accepted ? 'accepted' : 'declined');
   document.getElementById('consent-banner').classList.remove('visible');
+  if (accepted) {
+    loadGoogleAnalytics();
+  } else {
+    revokeGoogleAnalytics();
+  }
 }
 function checkConsent() {
-  if (!localStorage.getItem('astmize-consent')) {
+  const stored = localStorage.getItem('astmize-consent');
+  if (!stored) {
     setTimeout(() => {
       document.getElementById('consent-banner').classList.add('visible');
     }, 1200);
+  } else if (stored === 'accepted') {
+    // Returning visitor who already consented — load GA without re-prompting.
+    loadGoogleAnalytics();
+  } else {
+    revokeGoogleAnalytics();
   }
 }
 
@@ -3183,7 +3313,6 @@ window._patchedRenderConsole = function(compileObj, runObj, elapsedSec) {
 // So just hook into it differently:
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
-
 setLang(currentLang);
 checkConsent();
 setStatus('idle', t('status-ready'));
@@ -3198,7 +3327,6 @@ if (localStorage.getItem('astmize-intro-dismissed') === 'true') {
   if (introEl) introEl.classList.add('hidden');
 }
 </script>
-<a href="https://viberank.dev/apps/Astmize" target="_blank" rel="noopener noreferrer"><img src="https://viberank.dev/badge?app=Astmize&theme=dark" alt="Astmize on VibeRank" /></a>
 <div class="crypto-donation-section" style="background: #060913; border: 1px solid #00d2ff; padding: 12px; border-radius: 6px; text-align: center; margin: 15px auto; max-width: 380px; font-family: sans-serif; box-shadow: 0 0 8px rgba(0, 210, 255, 0.15);">
     <h4 style="color: #00d2ff; margin: 0 0 5px 0; font-size: 14px;">🚀 Support Ibrahim (Astmize Developer)</h4>
     <p style="color: #8fa0c0; font-size: 11px; margin: 0 0 10px 0; line-height: 1.4;">If this mobile-built tool saved your time, consider supporting via Crypto.</p>
@@ -3210,9 +3338,7 @@ if (localStorage.getItem('astmize-intro-dismissed') === 'true') {
     <div style="margin-top: 8px; text-align: left; background: #0f172a; padding: 8px; border-radius: 4px; border: 1px solid #1e293b;">
         <span style="color: #00d2ff; font-weight: bold; font-size: 10px;">USDT (Tron TRC20):</span>
         <code style="display: block; color: #ffffff; word-break: break-all; background: #020617; padding: 4px; border-radius: 3px; margin-top: 2px; font-size: 10px;">TECVGakoR3jXi4wT8yJrMd5Tt1ZkjLn81Z</code>
-        
     </div>
-    
 </div>
 
 </body>
