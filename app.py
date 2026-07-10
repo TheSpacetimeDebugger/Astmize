@@ -25,6 +25,83 @@ import logging
 import requests as http_requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import ast
+
+def is_malicious_python(code: str) -> tuple[bool, str]:
+    """
+    AST-based security scanner for Python code.
+    Returns (True, reason) if malicious, (False, "") if safe.
+    """
+    FORBIDDEN_NAMES = {
+        'os', 'subprocess', 'sys', 'socket', 'requests', 'urllib',
+        'eval', 'exec', 'compile', 'open', 'file', 'input',
+        'globals', 'locals', 'vars', 'dir', '__import__',
+        'getattr', 'setattr', 'delattr', 'execfile',
+        'system', 'popen', 'spawn', 'fork', 'kill',
+        'remove', 'unlink', 'rmdir', 'mkdir', 'chmod', 'chown',
+    }
+
+    FORBIDDEN_PATHS = {
+        '/etc/', '/root/', '/var/', '/proc/', '/sys/',
+        '~/.ssh/', '~/.aws/', '~/.config/',
+        '.env', '.git/', 'passwd', 'shadow',
+    }
+
+    try:
+        tree = ast.parse(code)
+    except SyntaxError as e:
+        return True, f"SyntaxError in Python code: {e}"
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                name = alias.name.split('.')[0]
+                if name in FORBIDDEN_NAMES:
+                    return True, f"Forbidden import: {name}"
+
+        elif isinstance(node, ast.ImportFrom):
+            module = node.module.split('.')[0] if node.module else ''
+            if module in FORBIDDEN_NAMES:
+                return True, f"Forbidden import from: {module}"
+            for alias in node.names:
+                if alias.name in FORBIDDEN_NAMES:
+                    return True, f"Forbidden import: {alias.name}"
+
+        elif isinstance(node, ast.Call):
+            func_name = ""
+            if isinstance(node.func, ast.Name):
+                func_name = node.func.id
+            elif isinstance(node.func, ast.Attribute):
+                if isinstance(node.func.value, ast.Name):
+                    obj_name = node.func.value.id
+                    attr_name = node.func.attr
+                    if obj_name in FORBIDDEN_NAMES or attr_name in FORBIDDEN_NAMES:
+                        return True, f"Forbidden function call: {obj_name}.{attr_name}"
+                    func_name = f"{obj_name}.{attr_name}"
+                else:
+                    func_name = node.func.attr
+            elif isinstance(node.func, ast.Call):
+                continue
+
+            if func_name in FORBIDDEN_NAMES:
+                return True, f"Forbidden function call: {func_name}"
+
+        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == 'open':
+            if node.args:
+                arg = node.args[0]
+                if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                    path = arg.value
+                    for forbidden in FORBIDDEN_PATHS:
+                        if forbidden in path:
+                            return True, f"Forbidden file access: {path}"
+
+        elif isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
+            if isinstance(node.value.value, str):
+                comment = node.value.value
+                if any(cmd in comment for cmd in ['system', 'exec', 'popen', 'curl', 'wget']):
+                    return True, "Comment contains potential system command"
+
+    return False, ""
 
 # ── Optional rate-limiter (install flask-limiter to enable) ────────────────────
 try:
