@@ -1477,31 +1477,19 @@ def health_check():
 @app.route("/convert", methods=["POST"])
 @rate_limit("60 per minute")
 def convert():
-    """
-    AI-powered Python → C++ conversion via Qwen3 Coder (OpenRouter).
-
-    Accepts:  { "python_code": "..." }
-    Returns:  { "success": bool, "cpp_code": str, "warnings": [], "error": str|null }
-
-    The response shape is identical to the old AST route so the frontend
-    requires zero changes.
-    """
     if not OPENROUTER_API_KEY:
         return jsonify({
             "success": False,
             "cpp_code": "",
             "warnings": [],
-            "error": (
-                "OPENROUTER_API_KEY is not configured. "
-                "Add it as an Environment Variable in your Render dashboard."
-            ),
+            "error": "OPENROUTER_API_KEY is not configured.",
         }), 503
 
     payload = request.get_json(silent=True)
     if not payload or "python_code" not in payload:
         return jsonify({
             "success": False,
-            "error": "Request body must be JSON with a 'python_code' key.",
+            "error": "Request must be JSON with 'python_code'.",
             "cpp_code": "", "warnings": [],
         }), 400
 
@@ -1509,11 +1497,21 @@ def convert():
     if not python_code:
         return jsonify({
             "success": False,
-            "error": "The 'python_code' field is empty.",
+            "error": "'python_code' field is empty.",
             "cpp_code": "", "warnings": [],
         }), 400
 
-    # ── Target C++ standard (optional, defaults to C++17) ──────────────────────
+    # ── SECURITY: Scan for malicious code before AI processing ──
+    is_malicious, reason = is_malicious_python(python_code)
+    if is_malicious:
+        logger.warning(f"Rejected malicious code: {reason} | First 100 chars: {python_code[:100]}")
+        return jsonify({
+            "success": False,
+            "cpp_code": "",
+            "warnings": [],
+            "error": f"Security violation: {reason}",
+        }), 400
+
     target_standard: str = str(payload.get("target_standard", "17")).strip()
     if target_standard not in ("11", "17"):
         target_standard = "17"
@@ -1522,42 +1520,30 @@ def convert():
     if len(python_code) > 100_000:
         return jsonify({
             "success": False,
-            "error": "Code payload exceeds the 100 KB limit.",
+            "error": "Code exceeds 100 KB limit.",
             "cpp_code": "", "warnings": [],
         }), 413
 
-    logger.info("Received AI conversion request (%d chars)", len(python_code))
+    logger.info("Processing AI conversion request (%d chars)", len(python_code))
 
-    prompt = f"""You are an expert C++ developer and Python expert. Convert the following Python code to clean, idiomatic {cpp_standard_label}.
+    prompt = f"""You are an expert C++ developer. Convert the following Python code to clean, idiomatic {cpp_standard_label}.
 
-Rules:
-- Output ONLY a JSON object, no markdown, no backticks, no preamble.
-- The JSON must have exactly these keys:
-    "cpp_code"  : the full, compilable C++ source as a single string
-    "warnings"  : a JSON array of strings for any translation caveats (empty array if none)
-- Include all necessary #include headers at the top.
-- Target the {cpp_standard_label} standard specifically — only use language features and standard-library facilities available in {cpp_standard_label} (e.g. avoid std::optional, structured bindings, or if constexpr when targeting C++11).
-- Use std::string, std::vector, std::map, std::cout, etc. as appropriate.
-- Replace print() with std::cout.
-- Preserve all logic exactly — do NOT add extra features.
-- If any construct cannot be translated cleanly, add a brief comment in the C++ code explaining why.
+SECURITY RULE: You MUST NOT generate any C++ code that uses system(), popen(), exec(), std::system, or any function that executes system commands. If the Python code attempts to use such functions, respond with a compilation error message instead of translating it.
 
-Python code to convert:
+Output format: ONLY a JSON object with keys "cpp_code" (string) and "warnings" (array). No markdown, no backticks.
+
+Python code:
 {python_code}"""
 
-    # ── Model fallback chain ────────────────────────────────────────────────────
-    # Try each free model in order; skip to the next on 429 (rate-limit).
-    # Each model has its own independent 200 req/day quota on OpenRouter.
-    # Ordered fastest-first: small/mid models respond in ~2-5s; large 100B+ models in ~10-30s.
     MODELS = [
-        "openai/gpt-oss-20b:free",                     # 20B — fastest response time
-        "google/gemma-4-31b-it:free",                  # 31B — fast, Google infra
-        "deepseek/deepseek-chat-v3-0324:free",         # strong coder, 131K ctx
-        "meta-llama/llama-3.3-70b-instruct:free",      # 70B — reliable, well-optimized
-        "qwen/qwen3-coder:free",                       # best code quality, 1M ctx (slower)
-        "openai/gpt-oss-120b:free",                    # 120B OpenAI OSS
-        "nvidia/nemotron-3-super-120b-a12b:free",      # 120B, 1M ctx
-        "nousresearch/hermes-3-llama-3.1-405b:free",   # 405B last resort — slowest
+        "openai/gpt-oss-20b:free",
+        "google/gemma-4-31b-it:free",
+        "deepseek/deepseek-chat-v3-0324:free",
+        "meta-llama/llama-3.3-70b-instruct:free",
+        "qwen/qwen3-coder:free",
+        "openai/gpt-oss-120b:free",
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "nousresearch/hermes-3-llama-3.1-405b:free",
     ]
 
     response = None
@@ -1582,32 +1568,27 @@ Python code to convert:
                 timeout=15,
             )
 
-            # Skip to next model on any of these transient/availability errors
             if resp.status_code in (404, 429, 503):
-                logger.warning(
-                    "Model %s returned %d — trying next model",
-                    model, resp.status_code,
-                )
+                logger.warning("Model %s returned %d - trying next", model, resp.status_code)
                 last_error = f"Model {model} returned {resp.status_code}"
                 continue
 
             resp.raise_for_status()
             response = resp
-            logger.info("Model %s accepted the request", model)
-            break  # success
+            logger.info("Model %s accepted request", model)
+            break
 
         except http_requests.exceptions.Timeout:
-            logger.error("Model %s timed out — trying next", model)
+            logger.error("Model %s timed out - trying next", model)
             last_error = f"Model {model} timed out"
             continue
         except http_requests.exceptions.RequestException as exc:
-            # Only hard-stop on auth errors (401/403); everything else try next
             status = getattr(exc.response, "status_code", None) if hasattr(exc, "response") else None
             last_error = str(exc)
             if status in (401, 403):
-                logger.error("Auth error on model %s — stopping: %s", model, exc)
+                logger.error("Auth error on model %s - stopping", model)
                 break
-            logger.error("Model %s request error: %s — trying next", model, exc)
+            logger.error("Model %s error - trying next: %s", model, exc)
             continue
 
     if response is None:
@@ -1615,20 +1596,12 @@ Python code to convert:
             "success": False,
             "cpp_code": "",
             "warnings": [],
-            "error": (
-                "All AI models are currently rate-limited or unavailable. "
-                "Please wait a moment and try again. "
-                f"(Last error: {last_error})"
-            ),
+            "error": f"All models unavailable. Last error: {last_error}",
         }), 502
 
     try:
         raw_text = response.json()["choices"][0]["message"]["content"]
-
-        # Strip <think>...</think> blocks emitted by reasoning models
         clean = re.sub(r"<think>.*?</think>", "", raw_text, flags=re.DOTALL).strip()
-
-        # Strip any residual markdown fences
         clean = re.sub(r"^```(?:json)?\s*", "", clean, flags=re.IGNORECASE)
         clean = re.sub(r"\s*```$", "", clean).strip()
 
@@ -1642,26 +1615,24 @@ Python code to convert:
             warnings = [str(w) for w in warnings]
 
         if not cpp_code:
-            raise ValueError("Model returned an empty cpp_code field.")
+            raise ValueError("Model returned empty cpp_code")
 
     except (json.JSONDecodeError, ValueError, KeyError, IndexError) as exc:
-        logger.error("Failed to parse AI convert response: %s | raw: %.300s", exc, raw_text)
+        logger.error("Failed to parse AI response: %s | raw: %.300s", exc, raw_text)
         return jsonify({
             "success": False,
             "cpp_code": "",
             "warnings": [],
-            "error": "Failed to parse AI response. Please try again.",
+            "error": "Failed to parse AI response.",
         }), 500
 
-    logger.info("AI conversion successful (%d chars output, %d warnings)", len(cpp_code), len(warnings))
+    logger.info("Conversion successful (%d chars, %d warnings)", len(cpp_code), len(warnings))
     return jsonify({
         "success": True,
         "cpp_code": cpp_code,
         "warnings": warnings,
         "error": None,
     }), 200
-
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  /enhance  — AI-powered C++ improvement via Qwen3 Coder (OpenRouter)
 # ══════════════════════════════════════════════════════════════════════════════
